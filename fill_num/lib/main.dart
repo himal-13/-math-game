@@ -1,3 +1,4 @@
+import 'package:fill_num/home_page.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -14,22 +15,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(),
-    );
-  }
-}
-class MyHomePage extends StatelessWidget {
-  const MyHomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Fill Math Math filling operator number.'),
-      ),
-      body: Center(
-        child: const Text('Hello, Flutter!'),
-      ),
+      home: const MathGameHomepage(),
     );
   }
 }
