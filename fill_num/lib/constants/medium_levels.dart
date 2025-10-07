@@ -1,0 +1,261 @@
+// constants/hard_levels.dart
+
+List<Map<String, dynamic>> mediumLevels = [
+  // Level 1-5: Basic combinations
+  {
+    'start': 25,
+    'target': 100,
+    'moves': 3,
+    'grid_tiles': ['+25', '+50', 'x2', 'x3', 'x4', '-10', '÷2', '÷5'],
+    'sol': ['x4'],
+  },
+  {
+    'start': 50,
+    'target': 200,
+    'moves': 4,
+    'grid_tiles': ['+50', 'x2', 'x3', 'x4', '+25', '-10', '÷2', '÷5'],
+    'sol': ['x4'],
+  },
+  {
+    'start': 100,
+    'target': 50,
+    'moves': 3,
+    'grid_tiles': ['÷2', '-50', '+25', 'x2', 'x3', '+10', '÷4', '÷5'],
+    'sol': ['÷2'],
+  },
+  {
+    'start': 15,
+    'target': 120,
+    'moves': 4,
+    'grid_tiles': ['x2', 'x4', 'x8', '+15', '-5', '÷3', 'x6', '+30'],
+    'sol': ['x8'],
+  },
+  {
+    'start': 200,
+    'target': 25,
+    'moves': 5,
+    'grid_tiles': ['÷2', '÷4', '÷8', '-100', '+25', 'x2', 'x3', '+50'],
+    'sol': ['÷8'],
+  },
+  // Level 6-10: Mixed operations
+  {
+    'start': 10,
+    'target': 250,
+    'moves': 5,
+    'grid_tiles': ['x5', 'x10', 'x2', '+20', '-5', '÷2', 'x8', '+40'],
+    'sol': ['x5', 'x5'],
+  },
+  {
+    'start': 64,
+    'target': 8,
+    'moves': 4,
+    'grid_tiles': ['÷2', '÷4', '÷8', 'x2', '+8', '-8', 'x4', '+16'],
+    'sol': ['÷8'],
+  },
+  {
+    'start': 36,
+    'target': 144,
+    'moves': 4,
+    'grid_tiles': ['x2', 'x3', 'x4', '+36', '-12', '÷3', 'x6', '+18'],
+    'sol': ['x4'],
+  },
+  {
+    'start': 75,
+    'target': 300,
+    'moves': 5,
+    'grid_tiles': ['x2', 'x3', 'x4', '+75', '-25', '÷3', 'x5', '+50'],
+    'sol': ['x4'],
+  },
+  {
+    'start': 99,
+    'target': 33,
+    'moves': 4,
+    'grid_tiles': ['÷3', '+33', '-33', 'x2', 'x3', '+66', '-66', '÷2'],
+    'sol': ['÷3'],
+  },
+
+  // Level 11-15: Strategic thinking
+  {
+    'start': 7,
+    'target': 343,
+    'moves': 6,
+    'grid_tiles': ['x2', 'x3', 'x7', '+7', '-7', '÷7', 'x5', 'x6'],
+    'sol': ['x7', 'x7'],
+  },
+  {
+    'start': 128,
+    'target': 16,
+    'moves': 5,
+    'grid_tiles': ['÷2', '÷4', '÷8', 'x2', '+16', '-16', 'x4', '+32'],
+    'sol': ['÷8'],
+  },
+  {
+    'start': 5,
+    'target': 625,
+    'moves': 7,
+    'grid_tiles': ['x2', 'x3', 'x5', 'x6', '+5', '-5', '÷5', 'x4'],
+    'sol': ['x5', 'x5', 'x5'],
+  },
+  {
+    'start': 81,
+    'target': 9,
+    'moves': 4,
+    'grid_tiles': ['÷3', '÷9', 'x3', 'x9', '+9', '-9', '÷2', 'x2'],
+    'sol': ['÷9'],
+  },
+  {
+    'start': 150,
+    'target': 6,
+    'moves': 6,
+    'grid_tiles': ['÷2', '÷3', '÷5', '÷6', '+6', '-6', 'x2', 'x3'],
+    'sol': ['÷5', '÷5'],
+  },
+
+  // Level 16-20: Complex sequences
+  {
+    'start': 12,
+    'target': 432,
+    'moves': 5,
+    'grid_tiles': ['x2', 'x3', 'x4', 'x6', '+12', '-6', '÷2', '÷3'],
+    'sol': ['x6', 'x6'],
+  },
+  {
+    'start': 24,
+    'target': 96,
+    'moves': 4,
+    'grid_tiles': ['x2', 'x3', 'x4', '+24', '-12', '÷2', '÷3', '÷4'],
+    'sol': ['x4'],
+  },
+  {
+    'start': 49,
+    'target': 7,
+    'moves': 3,
+    'grid_tiles': ['÷7', 'x7', '+7', '-7', 'x2', '÷2', 'x3', '÷3'],
+    'sol': ['÷7'],
+  },
+  {
+    'start': 8,
+    'target': 512,
+    'moves': 8,
+    'grid_tiles': ['x2', 'x4', 'x8', '+8', '-4', '÷2', 'x6', 'x7'],
+    'sol': ['x8', 'x8'],
+  },
+  {
+    'start': 100,
+    'target': 800,
+    'moves': 5,
+    'grid_tiles': ['x2', 'x4', 'x8', '+100', '-50', '÷2', 'x6', 'x7'],
+    'sol': ['x8'],
+  },
+
+  // Level 21-25: Advanced combinations
+  {
+    'start': 13,
+    'target': 169,
+    'moves': 4,
+    'grid_tiles': ['x2', 'x3', 'x13', '+13', '-13', '÷13', 'x5', 'x6'],
+    'sol': ['x13'],
+  },
+  {
+    'start': 17,
+    'target': 289,
+    'moves': 4,
+    'grid_tiles': ['x2', 'x3', 'x17', '+17', '-17', '÷17', 'x4', 'x5'],
+    'sol': ['x17'],
+  },
+  {
+    'start': 19,
+    'target': 361,
+    'moves': 4,
+    'grid_tiles': ['x2', 'x3', 'x19', '+19', '-19', '÷19', 'x5', 'x6'],
+    'sol': ['x19'],
+  },
+  {
+    'start': 23,
+    'target': 529,
+    'moves': 4,
+    'grid_tiles': ['x2', 'x3', 'x23', '+23', '-23', '÷23', 'x5', 'x6'],
+    'sol': ['x23'],
+  },
+  {
+    'start': 27,
+    'target': 729,
+    'moves': 6,
+    'grid_tiles': ['x2', 'x3', 'x9', 'x27', '+27', '-27', '÷3', '÷9'],
+    'sol': ['x27'],
+  },
+
+  // Level 26-30: Final challenges
+  {
+    'start': 32,
+    'target': 256,
+    'moves': 5,
+    'grid_tiles': ['x2', 'x4', 'x8', '+32', '-16', '÷2', '÷4', 'x6'],
+    'sol': ['x8'],
+  },
+  {
+    'start': 40,
+    'target': 320,
+    'moves': 4,
+    'grid_tiles': ['x2', 'x4', 'x8', '+40', '-20', '÷2', '÷4', 'x6'],
+    'sol': ['x8'],
+  },
+  {
+    'start': 56,
+    'target': 448,
+    'moves': 5,
+    'grid_tiles': ['x2', 'x4', 'x8', '+56', '-28', '÷2', '÷4', 'x7'],
+    'sol': ['x8'],
+  },
+  {
+    'start': 72,
+    'target': 576,
+    'moves': 5,
+    'grid_tiles': ['x2', 'x4', 'x8', '+72', '-36', '÷2', '÷3', 'x6'],
+    'sol': ['x8'],
+  },
+  {
+    'start': 88,
+    'target': 704,
+    'moves': 5,
+    'grid_tiles': ['x2', 'x4', 'x8', '+88', '-44', '÷2', '÷4', 'x7'],
+    'sol': ['x8'],
+  },
+
+  // Bonus levels 31-35
+  {
+    'start': 3,
+    'target': 729,
+    'moves': 10,
+    'grid_tiles': ['x2', 'x3', 'x6', 'x9', '+3', '-3', '÷3', 'x4', 'x5', 'x7'],
+    'sol': ['x3', 'x3', 'x3', 'x3', 'x3', 'x3'],
+  },
+  {
+    'start': 125,
+    'target': 5,
+    'moves': 6,
+    'grid_tiles': ['÷5', '÷25', 'x5', '+5', '-5', 'x2', '÷2', 'x3', '÷3', 'x4'],
+    'sol': ['÷5', '÷5'],
+  },
+  {
+    'start': 216,
+    'target': 6,
+    'moves': 5,
+    'grid_tiles': ['÷6', '÷36', 'x6', '+6', '-6', 'x2', '÷2', 'x3', '÷3'],
+    'sol': ['÷6'],
+  },
+  {
+    'start': 343,
+    'target': 7,
+    'moves': 4,
+    'grid_tiles': ['÷7', '÷49', 'x7', '+7', '-7', 'x2', '÷2', 'x3'],
+    'sol': ['÷7'],
+  },
+  {
+    'start': 512,
+    'target': 8,
+    'moves': 5,
+    'grid_tiles': ['÷8', '÷64', 'x8', '+8', '-8', 'x2', '÷2', 'x4', '÷4'],
+    'sol': ['÷8'],
+  },
+];

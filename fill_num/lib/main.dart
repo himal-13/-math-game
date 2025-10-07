@@ -1,8 +1,18 @@
 import 'package:fill_num/home_page.dart';
+import 'package:fill_num/utils/coin_service.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => CoinService()),
+        // Add other providers here
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -11,11 +21,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const MathGameHomepage(),
+      title: 'Math Games',
+      theme: ThemeData.dark(),
+      home: const HomePage(), // Your home page
     );
   }
 }
