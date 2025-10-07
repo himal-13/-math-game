@@ -2,6 +2,7 @@
 
 import 'package:fill_num/pages/easy_mode.dart';
 import 'package:fill_num/pages/medium_mode.dart';
+import 'package:fill_num/pages/hard_mode.dart';
 import 'package:fill_num/utils/coin_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -13,30 +14,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    );
-    _animation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOut,
-    );
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
+class _HomePageState extends State<HomePage> {
   void _navigateToEasyMode() {
     Navigator.push(
       context,
@@ -44,10 +22,17 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     );
   }
 
-  void _navigateToHardMode() {
+  void _navigateToMediumMode() {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const MediumMode()),
+    );
+  }
+
+  void _navigateToHardMode() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const HardMode()),
     );
   }
 
@@ -59,7 +44,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   void _rateApp() {
-    // TODO: Implement app rating logic
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Redirecting to app store...'),
@@ -69,63 +53,86 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   Widget _buildSettingsDialog() {
-    return AlertDialog(
-      backgroundColor: const Color(0xFF2D1B1B),
+    return Dialog(
+      backgroundColor: const Color(0xFF1E1E1E),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text(
-        'Settings',
-        style: TextStyle(
-          color: Colors.orangeAccent,
-          fontWeight: FontWeight.bold,
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Settings',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.orange.shade400,
+              ),
+            ),
+            const SizedBox(height: 20),
+            _buildSettingOption(
+              icon: Icons.volume_up,
+              title: 'Sound Effects',
+            ),
+            _buildSettingOption(
+              icon: Icons.music_note,
+              title: 'Background Music',
+            ),
+            _buildSettingOption(
+              icon: Icons.vibration,
+              title: 'Haptic Feedback',
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.grey.shade800,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Close',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildSettingOption(
-            icon: Icons.volume_up,
-            title: 'Sound Effects',
-            onChanged: (value) {},
-          ),
-          _buildSettingOption(
-            icon: Icons.music_note,
-            title: 'Background Music',
-            onChanged: (value) {},
-          ),
-          _buildSettingOption(
-            icon: Icons.vibration,
-            title: 'Haptic Feedback',
-            onChanged: (value) {},
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text(
-            'CLOSE',
-            style: TextStyle(color: Colors.orangeAccent),
-          ),
-        ),
-      ],
     );
   }
 
   Widget _buildSettingOption({
     required IconData icon,
     required String title,
-    required ValueChanged<bool> onChanged,
   }) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.orangeAccent),
-      title: Text(
-        title,
-        style: const TextStyle(color: Colors.white),
-      ),
-      trailing: Switch(
-        value: true,
-        onChanged: onChanged,
-        activeColor: Colors.orangeAccent,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.orange.shade400, size: 24),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+              ),
+            ),
+          ),
+          Switch(
+            value: true,
+            onChanged: (value) {},
+            activeColor: Colors.orange.shade400,
+          ),
+        ],
       ),
     );
   }
@@ -133,112 +140,117 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF1A0000),
-              Color(0xFF2D1B1B),
-              Colors.black,
+      backgroundColor: const Color(0xFF121212),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    onPressed: _showSettings,
+                    icon: Icon(
+                      Icons.settings,
+                      color: Colors.grey.shade400,
+                      size: 28,
+                    ),
+                  ),
+                  _buildCoinDisplay(),
+                ],
+              ),
+
+              const SizedBox(height: 40),
+
+              // Title Section
+              Center(
+                child: Column(
+                  children: [
+                    Text(
+                      'FILL NUM',
+                      style: TextStyle(
+                        fontSize: 42,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange.shade400,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Math Puzzle Game',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey.shade400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 50),
+
+              // Game Modes
+              Expanded(
+                child: Column(
+                  children: [
+                    _buildModeCard(
+                      title: 'Easy Mode',
+                      subtitle: 'Perfect for beginners',
+                      color: Colors.green.shade400,
+                      onTap: _navigateToEasyMode,
+                      icon: Icons.play_arrow,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildModeCard(
+                      title: 'Medium Mode',
+                      subtitle: 'Balance of challenge & fun',
+                      color: Colors.blue.shade400,
+                      onTap: _navigateToMediumMode,
+                      icon: Icons.gamepad,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildModeCard(
+                      title: 'Hard Mode',
+                      subtitle: 'Ultimate brain challenge',
+                      color: Colors.red.shade400,
+                      onTap: _navigateToHardMode,
+                      icon: Icons.psychology,
+                    ),
+                  ],
+                ),
+              ),
+
+              // Bottom Buttons
+              Padding(
+                padding: const EdgeInsets.only(top: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildBottomButton(
+                      icon: Icons.help_outline,
+                      label: 'Help',
+                      onTap: () {
+                        // TODO: Add help dialog
+                        _rateApp();
+                      },
+                    ),
+                    _buildBottomButton(
+                      icon: Icons.star_border,
+                      label: 'Rate',
+                      onTap: _rateApp,
+                    ),
+                  ],
+                ),
+              ),
             ],
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              children: [
-                // Header with coins and settings
-                _buildCoinDisplay(),
-                
-                const SizedBox(height: 40),
-                
-                // Game Title
-                ScaleTransition(
-                  scale: _animation,
-                  child: Column(
-                    children: [
-                      const Text(
-                        'FILL NUM',
-                        style: TextStyle(
-                          fontSize: 48,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.orangeAccent,
-                          letterSpacing: 3,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Math Puzzle Game',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.orangeAccent.withOpacity(0.8),
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                const Spacer(),
-                
-                // Game Mode Buttons
-                FadeTransition(
-                  opacity: _animation,
-                  child: Column(
-                    children: [
-                      _buildGameModeButton(
-                        title: 'EASY MODE',
-                        subtitle: 'Perfect for beginners',
-                        color: const Color(0xFF7E57C2),
-                        onTap: _navigateToEasyMode,
-                        icon: Icons.play_arrow_rounded,
-                      ),
-                      
-                      const SizedBox(height: 20),
-                      
-                      _buildGameModeButton(
-                        title: 'HARD MODE',
-                        subtitle: 'Challenge yourself',
-                        color: const Color(0xFFB71C1C),
-                        onTap: _navigateToHardMode,
-                        icon: Icons.sports_esports_rounded,
-                      ),
-                    ],
-                  ),
-                ),
-                
-                const Spacer(flex: 2),
-                
-                // Bottom Buttons
-                FadeTransition(
-                  opacity: _animation,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildBottomButton(
-                        icon: Icons.settings,
-                        label: 'Settings',
-                        onTap: _showSettings,
-                      ),
-                      _buildBottomButton(
-                        icon: Icons.star,
-                        label: 'Rate Us',
-                        onTap: _rateApp,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
           ),
         ),
       ),
     );
   }
-
 
   Widget _buildCoinDisplay() {
     return Consumer<CoinService>(
@@ -246,16 +258,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.grey.shade800,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.orangeAccent.withOpacity(0.3)),
           ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.monetization_on,
-                color: Colors.yellow,
+                color: Colors.yellow.shade600,
                 size: 20,
               ),
               const SizedBox(width: 6),
@@ -274,99 +284,68 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     );
   }
 
-  Widget _buildGameModeButton({
+  Widget _buildModeCard({
     required String title,
     required String subtitle,
     required Color color,
     required VoidCallback onTap,
     required IconData icon,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 100,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              color.withOpacity(0.8),
-              color.withOpacity(0.6),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.4),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
-          border: Border.all(color: Colors.white.withOpacity(0.2)),
-        ),
-        child: Stack(
-          children: [
-            // Background pattern
-            Positioned(
-              right: 10,
-              top: 10,
-              child: Opacity(
-                opacity: 0.1,
+    return Card(
+      color: Colors.grey.shade900,
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Icon(
                   icon,
-                  size: 60,
-                  color: Colors.white,
+                  color: color,
+                  size: 28,
                 ),
               ),
-            ),
-            
-            // Content
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          subtitle,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white.withOpacity(0.8),
-                          ),
-                        ),
-                      ],
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                      ),
                     ),
-                  ),
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(25),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade400,
+                      ),
                     ),
-                    child: Icon(
-                      icon,
-                      color: Colors.white,
-                      size: 30,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+              Icon(
+                Icons.arrow_forward_ios,
+                color: Colors.grey.shade600,
+                size: 20,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -380,28 +359,18 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        GestureDetector(
-          onTap: onTap,
-          child: Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: Colors.orangeAccent.withOpacity(0.3)),
-            ),
-            child: Icon(
-              icon,
-              color: Colors.orangeAccent,
-              size: 28,
-            ),
+        IconButton(
+          onPressed: onTap,
+          icon: Icon(
+            icon,
+            color: Colors.grey.shade400,
+            size: 28,
           ),
         ),
-        const SizedBox(height: 8),
         Text(
           label,
           style: TextStyle(
-            color: Colors.orangeAccent.withOpacity(0.8),
+            color: Colors.grey.shade400,
             fontSize: 12,
           ),
         ),
