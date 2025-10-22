@@ -1,6 +1,7 @@
 // pages/home_page.dart
 
 import 'package:fill_num/pages/easy_mode.dart';
+import 'package:fill_num/pages/expert_mode.dart';
 import 'package:fill_num/pages/medium_mode.dart';
 import 'package:fill_num/pages/hard_mode.dart';
 import 'package:fill_num/utils/coin_service.dart';
@@ -169,15 +170,7 @@ class _HomePageState extends State<HomePage> {
               Center(
                 child: Column(
                   children: [
-                    Text(
-                      'FILL NUM',
-                      style: TextStyle(
-                        fontSize: 42,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.orange.shade400,
-                        letterSpacing: 2,
-                      ),
-                    ),
+                   
                     const SizedBox(height: 8),
                     Text(
                       'Math Puzzle Game',
@@ -190,7 +183,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
 
-              const SizedBox(height: 50),
+              const SizedBox(height: 20),
 
               // Game Modes
               Expanded(
@@ -217,6 +210,18 @@ class _HomePageState extends State<HomePage> {
                       subtitle: 'Ultimate brain challenge',
                       color: Colors.red.shade400,
                       onTap: _navigateToHardMode,
+                      icon: Icons.psychology,
+                    ),
+                    _buildModeCard(
+                      title: 'Expert Mode',
+                      subtitle: 'Ultimate brain challenge',
+                      color: Colors.red.shade400,
+                      onTap: (){
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => ExtremeGrid()),
+                        );
+                      },
                       icon: Icons.psychology,
                     ),
                   ],

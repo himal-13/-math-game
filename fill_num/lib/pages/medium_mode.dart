@@ -14,8 +14,8 @@ class MediumMode extends StatefulWidget {
 }
 
 class _MediumModeState extends State<MediumMode> {
-  static const String _unlockedLevelsKey = 'hard_unlocked_levels'; // Different key
-  static const int _hintCost = 25; // Higher cost for hard mode
+  static const String _unlockedLevelsKey = 'unlocked_levels_medium';
+  static const int _hintCost = 20;
 
   final List<Map<String, dynamic>> _levels = mediumLevels;
   int _currentNumber = 0;
@@ -30,13 +30,6 @@ class _MediumModeState extends State<MediumMode> {
   bool _hasWon = false;
   bool _showLevelSelect = false;
   int _hintTileIndex = -1;
-
-  // Hard mode color scheme - Dark red/orange theme
-  final Color _primaryColor = const Color(0xFFB71C1C);
-  final Color _accentColor = const Color(0xFFFF6D00);
-  final Color _backgroundColor = const Color(0xFF1A0000);
-  final Color _cardColor = const Color(0xFF2D1B1B);
-  final Color _textColor = Colors.orangeAccent;
 
   SharedPreferences? _prefs;
 
@@ -72,6 +65,7 @@ class _MediumModeState extends State<MediumMode> {
 
   void _generatePuzzle() {
     final levelData = _levels[_currentLevelIndex];
+
     _currentNumber = levelData['start']!;
     _targetNumber = levelData['target']!;
     _movesRemaining = levelData['moves']!;
@@ -81,7 +75,9 @@ class _MediumModeState extends State<MediumMode> {
 
   bool _checkIfOnSolutionPath() {
     final solution = _levels[_currentLevelIndex]['sol']!;
-    if (_usedTileIndices.length > solution.length) return false;
+    if (_usedTileIndices.length > solution.length) {
+      return false;
+    }
     for (int i = 0; i < _usedTileIndices.length; i++) {
       if (_gridTiles[_usedTileIndices[i]] != solution[i]) {
         return false;
@@ -122,8 +118,11 @@ class _MediumModeState extends State<MediumMode> {
   }
 
   void _getHint() {
-    if (_usedTileIndices.length >= _levels[_currentLevelIndex]['sol']!.length) return;
-    final hintSolution = _levels[_currentLevelIndex]['sol']![_usedTileIndices.length] as String;
+    if (_usedTileIndices.length >= _levels[_currentLevelIndex]['sol']!.length) {
+      return;
+    }
+    final hintSolution =
+        _levels[_currentLevelIndex]['sol']![_usedTileIndices.length] as String;
     final int hintIndex = _gridTiles.indexOf(hintSolution);
 
     setState(() {
@@ -154,13 +153,13 @@ class _MediumModeState extends State<MediumMode> {
         break;
       case 'x':
         nextNumber *= value;
-        break;
       case '÷':
         if (value != 0 && nextNumber % value == 0) {
           nextNumber ~/= value;
         } else {
           setState(() {
-            _message = 'Invalid move! Cannot divide by zero or get a non-integer result.';
+            _message =
+                'Invalid move! Cannot divide by zero or get a non-integer result.';
             _isGameOver = true;
           });
           return;
@@ -180,10 +179,6 @@ class _MediumModeState extends State<MediumMode> {
       if (_hasWon) {
         _message = 'Level ${_currentLevelIndex + 1} Complete!';
         _isGameOver = true;
-        if (_currentLevelIndex + 1 >= _unlockedLevelsCount) {
-          _unlockedLevelsCount = _currentLevelIndex + 2;
-          _saveUnlockedLevels();
-        }
       } else if (_movesRemaining == 0) {
         _message = 'Out of moves! Game Over.';
         _isGameOver = true;
@@ -196,23 +191,23 @@ class _MediumModeState extends State<MediumMode> {
     final bool isHint = index == _hintTileIndex;
 
     final tileColor = isUsed
-        ? _cardColor.withOpacity(0.5)
+        ? Colors.white24
         : isHint
-            ? _accentColor.withOpacity(0.4)
-            : _cardColor;
+        ? Colors.teal.withOpacity(0.4)
+        : Colors.white12;
     final borderColor = isUsed
-        ? Colors.grey
+        ? Colors.white30
         : isHint
-            ? _accentColor
-            : _primaryColor;
-    final textColor = isUsed ? Colors.grey : _textColor;
+        ? Colors.teal
+        : Colors.white54;
+    final textColor = isUsed ? Colors.grey : Colors.white;
 
     return InkWell(
       onTap: isUsed ? null : () => _handleTileTap(index),
       child: Container(
         decoration: BoxDecoration(
           color: tileColor,
-          borderRadius: BorderRadius.circular(8), // Smaller radius for harder feel
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(color: borderColor, width: 1.5),
           boxShadow: [
             BoxShadow(
@@ -226,8 +221,8 @@ class _MediumModeState extends State<MediumMode> {
           child: Text(
             tile,
             style: TextStyle(
-              fontSize: _levels[_currentLevelIndex]['grid_tiles']![0].length >= 20 ? 14 : 18,
-              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
               color: textColor,
             ),
           ),
@@ -239,65 +234,50 @@ class _MediumModeState extends State<MediumMode> {
   Widget _buildLevelSelectionPage() {
     return Column(
       children: [
-        const Padding(
-          padding: EdgeInsets.only(top: 24.0, bottom: 16.0),
-          child: Text(
-            'Hard Levels',
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: Colors.orangeAccent,
-            ),
-          ),
-        ),
+        //unlock all levels for debugging
+        // ElevatedButton(
+        //   onPressed: () {
+        //     setState(() {
+        //       _unlockedLevelsCount = _levels.length;
+        //     });
+        //     _saveUnlockedLevels();
+        //   },
+        //   child: const Text('Unlock All Levels'),
+        // ),
         Expanded(
           child: GridView.builder(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 5, // More columns for hard mode
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
+              crossAxisCount: 5,
+              crossAxisSpacing: 2,
+              mainAxisSpacing: 2,
             ),
             itemCount: _levels.length,
             itemBuilder: (context, index) {
               final isUnlocked = index < _unlockedLevelsCount;
-              return Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.5),
-                      blurRadius: 6,
-                      offset: const Offset(3, 3),
+              return ElevatedButton(
+                onPressed: isUnlocked
+                    ? () => _startGame(levelIndex: index)
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isUnlocked
+                      ? Colors.teal[700]
+                      : Colors.grey[700],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '${index + 1}',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ],
-                ),
-                child: ElevatedButton(
-                  onPressed: isUnlocked ? () => _startGame(levelIndex: index) : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isUnlocked ? _primaryColor : Colors.grey[800],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(
-                        color: isUnlocked ? _accentColor : Colors.grey,
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '${index + 1}',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: isUnlocked ? Colors.white : Colors.grey,
-                        ),
-                      ),
-                      if (!isUnlocked)
-                        const Icon(Icons.lock, color: Colors.white, size: 16),
-                    ],
-                  ),
                 ),
               );
             },
@@ -310,24 +290,28 @@ class _MediumModeState extends State<MediumMode> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _backgroundColor,
+      backgroundColor: Colors.black,
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: Text(
-          _showLevelSelect ? 'HARD MODE' : 'Level ${_currentLevelIndex + 1}',
-          style: TextStyle(
-            color: _textColor,
+          _showLevelSelect ? 'Medium Mode' : 'Level ${_currentLevelIndex + 1}',
+          style: const TextStyle(
+            color: Colors.white,
             fontWeight: FontWeight.bold,
-            fontSize: _showLevelSelect ? 24 : 20,
           ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         leading: _showLevelSelect
-            ? const SizedBox.shrink()
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              )
             : IconButton(
-                icon: Icon(Icons.list, color: _textColor),
+                icon: const Icon(Icons.list, color: Colors.white),
                 onPressed: () {
                   setState(() {
                     _showLevelSelect = true;
@@ -339,17 +323,19 @@ class _MediumModeState extends State<MediumMode> {
         ],
       ),
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [_backgroundColor, Colors.black],
+            colors: [Color(0xFF1a2a2a), Colors.black],
           ),
         ),
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(20.0),
-            child: _showLevelSelect ? _buildLevelSelectionPage() : _buildGamePage(),
+            child: _showLevelSelect
+                ? _buildLevelSelectionPage()
+                : _buildGamePage(),
           ),
         ),
       ),
@@ -368,23 +354,23 @@ class _MediumModeState extends State<MediumMode> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             margin: const EdgeInsets.only(right: 16),
             decoration: BoxDecoration(
-              color: _cardColor,
-              borderRadius: BorderRadius.circular(15),
-              border: Border.all(color: _accentColor),
+              color: Colors.teal.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.teal.withOpacity(0.5)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
+                const Icon(
                   Icons.monetization_on,
-                  color: Colors.yellow[700],
+                  color: Colors.yellow,
                   size: 18,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   '${coinService.coins}',
-                  style: TextStyle(
-                    color: _textColor,
+                  style: const TextStyle(
+                    color: Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
@@ -403,26 +389,26 @@ class _MediumModeState extends State<MediumMode> {
         _buildInfoContainer(
           title: 'MOVES LEFT',
           value: _movesRemaining.toString(),
-          color: _movesRemaining < 3 ? Colors.red : _accentColor,
+          color: _movesRemaining < 3 ? Colors.red : Colors.teal,
         ),
-        const SizedBox(height: 16),
-        _buildTargetAndCurrentDisplay(),
         const SizedBox(height: 20),
-        
+        _buildTargetAndCurrentDisplay(),
+
+        const SizedBox(height: 20),
+
         if (_isGameOver)
           _buildMessageAndResetButton()
         else
           Expanded(
             child: GridView.builder(
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: _currentLevelIndex < 3
+                crossAxisCount: _currentLevelIndex < 5
                     ? 3
                     : _currentLevelIndex < 15
                     ? 4
                     : 5,
-                crossAxisSpacing: 6,
-                mainAxisSpacing: 6,
-                childAspectRatio: 1.0,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
               ),
               itemCount: _levels[_currentLevelIndex]['grid_tiles']!.length,
               itemBuilder: (context, index) {
@@ -430,11 +416,8 @@ class _MediumModeState extends State<MediumMode> {
               },
             ),
           ),
-        
-        if (!_isGameOver) ...[
-          const SizedBox(height: 16),
-          _buildHintAndShuffleButtons(),
-        ],
+        const SizedBox(height: 16),
+        if (!_isGameOver) _buildHintAndShuffleButtons(),
       ],
     );
   }
@@ -446,7 +429,7 @@ class _MediumModeState extends State<MediumMode> {
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: color.withOpacity(0.9),
         borderRadius: BorderRadius.circular(15),
@@ -457,7 +440,6 @@ class _MediumModeState extends State<MediumMode> {
             offset: const Offset(0, 3),
           ),
         ],
-        border: Border.all(color: Colors.white.withOpacity(0.2)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -466,24 +448,17 @@ class _MediumModeState extends State<MediumMode> {
             title,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.0,
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
@@ -496,31 +471,20 @@ class _MediumModeState extends State<MediumMode> {
     required VoidCallback onPressed,
     required Color color,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(25),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.4),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+        elevation: 6,
       ),
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
         ),
       ),
     );
@@ -528,59 +492,71 @@ class _MediumModeState extends State<MediumMode> {
 
   Widget _buildHintAndShuffleButtons() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _buildIconButton(
-          icon: Icons.lightbulb_outline,
-          label: 'Hint ($_hintCost)',
-          onPressed: _purchaseHint,
-          color: _accentColor,
-        ),
-        _buildIconButton(
-          icon: Icons.refresh,
-          label: 'Reset',
-          onPressed: _resetGame,
-          color: _primaryColor,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildIconButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onPressed,
-    required Color color,
-  }) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(25),
-            boxShadow: [
-              BoxShadow(
-                color: color.withOpacity(0.5),
-                blurRadius: 6,
-                offset: const Offset(0, 3),
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 55,
+                height: 55,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      onPressed: _purchaseHint,
+                      icon: Icon(
+                        Icons.lightbulb_outline,
+                        color: Colors.teal[300],
+                        size: 36,
+                      ),
+                    ),
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: Colors.yellow,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.monetization_on,
+                          size: 14,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Hint ($_hintCost)',
+                style: TextStyle(color: Colors.white, fontSize: 12),
               ),
             ],
           ),
-          child: IconButton(
-            onPressed: onPressed,
-            icon: Icon(icon, color: Colors.white, size: 24),
-          ),
         ),
-        const SizedBox(height: 6),
-        Text(
-          label,
-          style: TextStyle(
-            color: _textColor,
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 55,
+                height: 55,
+                child: IconButton(
+                  onPressed: _resetGame,
+                  icon: Icon(Icons.refresh, color: Colors.amber[700], size: 36),
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Reset',
+                style: TextStyle(color: Colors.white, fontSize: 12),
+              ),
+            ],
           ),
         ),
       ],
@@ -591,69 +567,63 @@ class _MediumModeState extends State<MediumMode> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _cardColor,
+        color: Colors.white.withOpacity(0.08),
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: _primaryColor.withOpacity(0.5)),
+        border: Border.all(color: Colors.teal.withOpacity(0.3)),
       ),
       child: Row(
         children: [
-          // Current Number
+          // Current Number Display
           Expanded(
             child: Column(
               children: [
-                Text(
+                const Text(
                   'CURRENT',
                   style: TextStyle(
-                    fontSize: 14,
-                    color: _textColor.withOpacity(0.8),
+                    fontSize: 12,
+                    color: Colors.white70,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 8),
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 300),
-                  transitionBuilder: (Widget child, Animation<double> animation) {
-                    return ScaleTransition(scale: animation, child: child);
-                  },
+                  transitionBuilder:
+                      (Widget child, Animation<double> animation) {
+                        return ScaleTransition(scale: animation, child: child);
+                      },
                   child: Text(
                     '$_currentNumber',
                     key: ValueKey<int>(_currentNumber),
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
-                      color: _textColor,
+                      color: Colors.white,
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          // VS Separator
-          Container(
-            width: 1,
-            height: 40,
-            color: _primaryColor.withOpacity(0.5),
-            margin: const EdgeInsets.symmetric(horizontal: 8),
-          ),
-          // Target Number
+          // Target Number Display
           Expanded(
             child: Column(
               children: [
-                Text(
+                const Text(
                   'TARGET',
                   style: TextStyle(
-                    fontSize: 14,
-                    color: _textColor.withOpacity(0.8),
+                    fontSize: 12,
+                    color: Colors.white70,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   '$_targetNumber',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
-                    color: _accentColor,
+                    color: Colors.white,
                   ),
                 ),
               ],
@@ -668,47 +638,45 @@ class _MediumModeState extends State<MediumMode> {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: _cardColor,
+            color: _hasWon
+                ? Colors.teal.withOpacity(0.2)
+                : Colors.red.withOpacity(0.2),
             borderRadius: BorderRadius.circular(15),
             border: Border.all(
-              color: _hasWon ? Colors.green : Colors.red,
+              color: _hasWon ? Colors.teal : Colors.red,
               width: 2,
             ),
           ),
-          child: Column(
-            children: [
-              Icon(
-                _hasWon ? Icons.celebration : Icons.warning,
-                color: _hasWon ? Colors.green : Colors.red,
-                size: 40,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                _message!,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: _hasWon ? Colors.green : Colors.red,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
+          child: Text(
+            _message!,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: _hasWon ? Colors.tealAccent : Colors.redAccent,
+            ),
+            textAlign: TextAlign.center,
           ),
         ),
         const SizedBox(height: 20),
         if (_hasWon && _currentLevelIndex < _levels.length - 1)
           _buildActionButton(
-            text: 'NEXT LEVEL',
+            text: 'Next Level',
             onPressed: () {
+              if (_currentLevelIndex + 1 >= _unlockedLevelsCount) {
+                setState(() {
+                  _unlockedLevelsCount = _currentLevelIndex + 2;
+                });
+                _saveUnlockedLevels();
+              }
               _startGame(levelIndex: _currentLevelIndex + 1);
             },
-            color: Colors.green,
+            color: Colors.teal,
           )
         else
           _buildActionButton(
-            text: 'TRY AGAIN',
+            text: 'Try Again',
             onPressed: () {
               _startGame(levelIndex: _currentLevelIndex);
             },

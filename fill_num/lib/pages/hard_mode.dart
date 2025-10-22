@@ -32,33 +32,31 @@ class _HardModeState extends State<HardMode> {
   bool _showLevelSelect = false;
   int _hintTileIndex = -1;
   late List<Operation> _solution;
-  String _gameOverReason = ''; // Track the reason for game over
+  String _gameOverReason = '';
 
   List<int> _usedTileIndices = [];
 
-  // Use the imported levels
   List<HardcoreLevel> get _levels => hardcoreLevels;
 
-  // Color mapping for different operation types
   Color _getOperationColor(Operation op) {
     switch (op.type) {
       case '+':
       case '-':
-        return const Color(0xFF1E88E5); // Blue for basic arithmetic
+        return const Color(0xFF1E88E5);
       case '*':
       case '/':
-        return const Color(0xFF43A047); // Green for multiplication/division
+        return const Color(0xFF43A047);
       case '^2':
       case '^3':
-        return const Color(0xFFFFB300); // Amber for exponents
+        return const Color(0xFFFFB300);
       case '+%':
       case '-%':
-        return const Color(0xFFF4511E); // Deep orange for percentages
+        return const Color(0xFFF4511E);
       case '√':
       case '∛':
-        return const Color(0xFF8E24AA); // Purple for roots
+        return const Color(0xFF8E24AA);
       default:
-        return const Color.fromARGB(255, 104, 58, 183); // Default purple
+        return const Color.fromARGB(255, 104, 58, 183);
     }
   }
 
@@ -66,23 +64,20 @@ class _HardModeState extends State<HardMode> {
   void initState() {
     super.initState();
     _initSharedPreferences();
-    // AudioManager.load();
   }
 
   void _initSharedPreferences() async {
     _prefs = await SharedPreferences.getInstance();
     setState(() {
       _unlockedLevelsCount = _prefs.getInt(_unlockedLevelsKey) ?? 1;
-      // Ensure the unlocked level count doesn't exceed the number of available levels.
       if (_unlockedLevelsCount > _levels.length) {
         _unlockedLevelsCount = _levels.length;
       }
     });
-    // Ensure we don't try to start a level that doesn't exist.
     if (_unlockedLevelsCount - 1 < _levels.length) {
       _startGame(levelIndex: _unlockedLevelsCount - 1);
     } else {
-      _startGame(levelIndex: 0); // Fallback to level 1 if something is wrong.
+      _startGame(levelIndex: 0);
     }
   }
 
@@ -92,8 +87,7 @@ class _HardModeState extends State<HardMode> {
 
   void _startGame({int levelIndex = 0}) {
     if (levelIndex >= _levels.length) {
-      levelIndex =
-          0; // Fallback to the first level if the target level doesn't exist
+      levelIndex = 0;
     }
 
     setState(() {
@@ -109,13 +103,12 @@ class _HardModeState extends State<HardMode> {
       _targetValue = level.target.reduce();
       _movesLeft = level.moves;
 
-      // Get the original operations and solution
       _operations = List<Operation>.from(level.operations);
-      _operations.shuffle(); // Shuffle the operations
+      _operations.shuffle();
       _solution = List<Operation>.from(level.solution);
 
       _isUsed = List.filled(_operations.length, false);
-      _usedTileIndices = []; // Reset moves
+      _usedTileIndices = [];
     });
   }
 
@@ -153,11 +146,9 @@ class _HardModeState extends State<HardMode> {
           final percentage = _currentValue * operation.value;
           _currentValue -= percentage;
           break;
-        // Add square root operation
         case '√':
           _currentValue = _calculateSquareRoot(_currentValue);
           break;
-        // Add cube root operation
         case '∛':
           _currentValue = _calculateCubeRoot(_currentValue);
           break;
@@ -166,68 +157,55 @@ class _HardModeState extends State<HardMode> {
       _currentValue = _currentValue.reduce();
       _isUsed[index] = true;
       _hintTileIndex = -1;
-      _usedTileIndices.add(index); // Track the move
+      _usedTileIndices.add(index);
       _checkGameState();
     });
   }
 
-  // Square root calculation method
   Fraction _calculateSquareRoot(Fraction value) {
-    // Check if the square root results in a rational number
-    // A fraction a/b has a rational square root if both a and b are perfect squares
     final numerator = value.numerator.toDouble();
     final denominator = value.denominator.toDouble();
 
     final numeratorRoot = math.sqrt(numerator);
     final denominatorRoot = math.sqrt(denominator);
 
-    // Check if both numerator and denominator roots are integers (or very close to integers)
     final isNumeratorPerfectSquare =
         (numeratorRoot - numeratorRoot.roundToDouble()).abs() < 0.0001;
     final isDenominatorPerfectSquare =
         (denominatorRoot - denominatorRoot.roundToDouble()).abs() < 0.0001;
 
     if (isNumeratorPerfectSquare && isDenominatorPerfectSquare) {
-      // Return the rational square root
       return Fraction.fromDouble(numeratorRoot / denominatorRoot).reduce();
     } else {
-      // Square root results in irrational number - game over
       _triggerGameOverDueToIrrational(
         'Square root resulted in irrational number',
       );
-      return value; // Return original value (won't matter since game will be over)
+      return value;
     }
   }
 
-  // Cube root calculation method
   Fraction _calculateCubeRoot(Fraction value) {
-    // Check if the cube root results in a rational number
-    // A fraction a/b has a rational cube root if both a and b are perfect cubes
     final numerator = value.numerator.toDouble();
     final denominator = value.denominator.toDouble();
 
     final numeratorRoot = _cubeRoot(numerator);
     final denominatorRoot = _cubeRoot(denominator);
 
-    // Check if both numerator and denominator roots are integers (or very close to integers)
     final isNumeratorPerfectCube =
         (numeratorRoot - numeratorRoot.roundToDouble()).abs() < 0.0001;
     final isDenominatorPerfectCube =
         (denominatorRoot - denominatorRoot.roundToDouble()).abs() < 0.0001;
 
     if (isNumeratorPerfectCube && isDenominatorPerfectCube) {
-      // Return the rational cube root
       return Fraction.fromDouble(numeratorRoot / denominatorRoot).reduce();
     } else {
-      // Cube root results in irrational number - game over
       _triggerGameOverDueToIrrational(
         'Cube root resulted in irrational number',
       );
-      return value; // Return original value (won't matter since game will be over)
+      return value;
     }
   }
 
-  // Helper method to calculate cube root
   double _cubeRoot(double value) {
     if (value < 0) {
       return -math.pow(-value, 1 / 3) as double;
@@ -235,7 +213,6 @@ class _HardModeState extends State<HardMode> {
     return math.pow(value, 1 / 3) as double;
   }
 
-  // Method to handle game over due to irrational number
   void _triggerGameOverDueToIrrational(String reason) {
     setState(() {
       _isGameOver = true;
@@ -287,7 +264,6 @@ class _HardModeState extends State<HardMode> {
       return;
     }
 
-    // Check if user's moves match the solution so far
     int movesMade = _usedTileIndices.length;
     bool needsReset = false;
     for (int i = 0; i < movesMade; i++) {
@@ -304,7 +280,6 @@ class _HardModeState extends State<HardMode> {
     }
 
     if (needsReset) {
-      // Reset the game and show the first hint
       _startGame(levelIndex: _currentLevelIndex);
       await Future.delayed(const Duration(milliseconds: 300));
       setState(() {
@@ -313,18 +288,16 @@ class _HardModeState extends State<HardMode> {
       return;
     }
 
-    // Otherwise, show the next correct move as hint
     int nextHintStep = movesMade;
     int nextHintIndex = _findNextHintIndex(nextHintStep);
 
     setState(() {
       if (nextHintIndex != -1) {
         _hintTileIndex = nextHintIndex;
-      } else {}
+      }
     });
   }
 
-  // Helper to find the next hint index
   int _findNextHintIndex(int step) {
     if (step < _solution.length) {
       Operation nextSolutionOperation = _solution[step];
@@ -354,9 +327,9 @@ class _HardModeState extends State<HardMode> {
       case '-%':
         return '-${(op.value.toDouble() * 100).toInt()}%';
       case '√':
-        return '√'; // Square root symbol
+        return '√';
       case '∛':
-        return '∛'; // Cube root symbol
+        return '∛';
       default:
         return '${op.type}${op.value.toString()}';
     }
@@ -365,24 +338,31 @@ class _HardModeState extends State<HardMode> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1a1a1a),
+      backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
         title: Text(
-          _showLevelSelect
-              ? 'Select a Level'
-              : 'Level ${_currentLevelIndex + 1}',
+          _showLevelSelect ? 'Select Level' : 'Level ${_currentLevelIndex + 1}',
           style: const TextStyle(
             color: Colors.white,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
           ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: Icon(
-            _showLevelSelect ? Icons.arrow_back : Icons.list,
-            color: Colors.white,
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              _showLevelSelect ? Icons.arrow_back_ios_new_rounded : Icons.list_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
           ),
           onPressed: () {
             setState(() {
@@ -397,12 +377,12 @@ class _HardModeState extends State<HardMode> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF1a1a1a), Colors.black],
+            colors: [Color(0xFF1E1E1E), Color(0xFF121212)],
           ),
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(20.0),
             child: _showLevelSelect
                 ? _buildLevelSelectionPage()
                 : _buildGamePage(),
@@ -414,35 +394,91 @@ class _HardModeState extends State<HardMode> {
 
   Widget _buildLevelSelectionPage() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const Padding(
+          padding: EdgeInsets.only(bottom: 20),
+          child: Text(
+            'Hardcore Levels',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
         Expanded(
           child: GridView.builder(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
+              crossAxisCount: 5,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
             ),
             itemCount: _levels.length,
             itemBuilder: (context, index) {
               final isUnlocked = index < _unlockedLevelsCount;
-              return ElevatedButton(
-                onPressed: isUnlocked
-                    ? () => _startGame(levelIndex: index)
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isUnlocked
-                      ? const Color.fromARGB(213, 104, 58, 183)
-                      : const Color.fromARGB(144, 158, 158, 158),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              final isCurrent = index == _currentLevelIndex;
+              
+              return GestureDetector(
+                onTap: isUnlocked ? () => _startGame(levelIndex: index) : null,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: isUnlocked
+                        ? (isCurrent 
+                            ? const LinearGradient(
+                                colors: [Color(0xFF7C4DFF), Color(0xFF448AFF)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                            : LinearGradient(
+                                colors: [
+                                  Colors.white.withOpacity(0.15),
+                                  Colors.white.withOpacity(0.05)
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ))
+                        : LinearGradient(
+                            colors: [
+                              Colors.grey.withOpacity(0.3),
+                              Colors.grey.withOpacity(0.1)
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                    borderRadius: BorderRadius.circular(16),
+                    border: isCurrent 
+                        ? Border.all(color: Colors.white, width: 2)
+                        : Border.all(color: Colors.white.withOpacity(0.2), width: 1),
+                    boxShadow: [
+                      if (isUnlocked)
+                        BoxShadow(
+                          color: Colors.purple.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                    ],
                   ),
-                ),
-                child: Text(
-                  '${index + 1}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '${index + 1}',
+                          style: TextStyle(
+                            color: isUnlocked ? Colors.white : Colors.grey,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        if (!isUnlocked)
+                          const Icon(
+                            Icons.lock,
+                            color: Colors.grey,
+                            size: 12,
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -457,23 +493,17 @@ class _HardModeState extends State<HardMode> {
     final level = _levels[_currentLevelIndex];
     return Column(
       children: [
-        // Game info section - Improved UI
+        // Game info section - KEEPING MOVES LEFT AS ORIGINAL
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: const Color.fromARGB(255, 30, 30, 30),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 5),
-              ),
-            ],
+            color: Colors.white.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
           child: Column(
             children: [
-              // Moves left indicator (unchanged as requested)
+              // Moves left indicator - KEEPING EXACTLY AS ORIGINAL
               _buildInfoContainer(
                 title: 'Moves Left',
                 value: _movesLeft.toString(),
@@ -505,68 +535,80 @@ class _HardModeState extends State<HardMode> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
 
-        const SizedBox(height: 16),
-
-        // Conditional rendering for game over and operation grid
+        // Game grid or game over screen
         if (_isGameOver && !_isGameWon) ...[
-          // Game Over Screen
           Expanded(
             child: Center(
               child: Container(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(32),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.red.withOpacity(0.15),
+                      Colors.orange.withOpacity(0.1)
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(24),
                   border: Border.all(color: Colors.red.withOpacity(0.3)),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      Icons.cancel_rounded,
-                      color: Colors.red,
-                      size: 64,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Game Over!',
-                      style: TextStyle(
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.cancel_rounded,
                         color: Colors.red,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
+                        size: 64,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Game Over',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     Text(
                       _gameOverReason,
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.8),
                         fontSize: 16,
+                        fontWeight: FontWeight.w500,
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 28),
                     ElevatedButton(
-                      onPressed: () =>
-                          _startGame(levelIndex: _currentLevelIndex),
+                      onPressed: () => _startGame(levelIndex: _currentLevelIndex),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 32,
-                          vertical: 12,
+                          horizontal: 40,
+                          vertical: 16,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
                         ),
+                        elevation: 4,
                       ),
                       child: const Text(
                         'Try Again',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -576,32 +618,68 @@ class _HardModeState extends State<HardMode> {
             ),
           ),
         ] else if (_isGameWon) ...[
-          // Level Complete Message
-          Container(
-            margin: const EdgeInsets.only(top: 16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Text(
-              'Level Complete! Moving to next level...',
-              style: TextStyle(
-                color: Colors.green,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+          Expanded(
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.green.withOpacity(0.15),
+                      Colors.teal.withOpacity(0.1)
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.green.withOpacity(0.3)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.check_circle_rounded,
+                        color: Colors.green,
+                        size: 48,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Level Complete!',
+                      style: TextStyle(
+                        color: Colors.green,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Moving to next level...',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-          const Spacer(),
         ] else ...[
-          // Normal Game Grid (only shown when game is active)
+          // Operation grid
           Expanded(
             child: GridView.builder(
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: level.cols,
-                crossAxisSpacing: 4,
-                mainAxisSpacing: 4,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 1.2,
               ),
               itemCount: _operations.length,
               itemBuilder: (context, index) {
@@ -613,22 +691,52 @@ class _HardModeState extends State<HardMode> {
                 return GestureDetector(
                   onTap: () => _applyOperation(index),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
                     decoration: BoxDecoration(
-                      color: isHint
-                          ? Colors.blue.withOpacity(0.8)
+                      gradient: isHint
+                          ? const LinearGradient(
+                              colors: [Color(0xFF29B6F6), Color(0xFF03A9F4)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            )
                           : isUsed
-                          ? const Color.fromARGB(255, 60, 60, 60)
-                          : operationColor,
-                      borderRadius: BorderRadius.circular(12),
+                              ? LinearGradient(
+                                  colors: [
+                                    Colors.grey.withOpacity(0.3),
+                                    Colors.grey.withOpacity(0.1)
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                )
+                              : LinearGradient(
+                                  colors: [
+                                    operationColor.withOpacity(0.9),
+                                    operationColor.withOpacity(0.7)
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                      borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         if (!isUsed && !isHint)
                           BoxShadow(
-                            color: operationColor.withOpacity(0.6),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
+                            color: operationColor.withOpacity(0.4),
+                            blurRadius: 12,
+                            offset: const Offset(0, 6),
                           ),
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
                       ],
+                      border: Border.all(
+                        color: isHint 
+                            ? Colors.white 
+                            : Colors.white.withOpacity(0.1),
+                        width: isHint ? 2 : 1,
+                      ),
                     ),
                     child: Center(
                       child: Text(
@@ -636,10 +744,15 @@ class _HardModeState extends State<HardMode> {
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          decoration: isUsed
-                              ? TextDecoration.lineThrough
-                              : null,
+                          fontWeight: FontWeight.w700,
+                          decoration: isUsed ? TextDecoration.lineThrough : null,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 2,
+                              offset: const Offset(1, 1),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -649,7 +762,9 @@ class _HardModeState extends State<HardMode> {
             ),
           ),
 
-          // Action buttons (only shown when game is active)
+          const SizedBox(height: 20),
+
+          // Action buttons
           Row(
             children: [
               Expanded(
@@ -657,36 +772,46 @@ class _HardModeState extends State<HardMode> {
                   onPressed: _getHint,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                     ),
+                    elevation: 4,
                   ),
                   icon: const Icon(
-                    Icons.lightbulb_outline,
-                    color: Colors.white,
+                    Icons.lightbulb_outline_rounded,
+                    size: 20,
                   ),
                   label: const Text(
-                    'Hint(20)',
-                    style: TextStyle(color: Colors.white),
+                    'Hint (20)',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () => _startGame(levelIndex: _currentLevelIndex),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.orange,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                     ),
+                    elevation: 4,
                   ),
-                  icon: const Icon(Icons.refresh, color: Colors.white),
+                  icon: const Icon(Icons.refresh_rounded, size: 20),
                   label: const Text(
                     'Restart',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
@@ -697,57 +822,7 @@ class _HardModeState extends State<HardMode> {
     );
   }
 
-  // New method for improved value cards
-  Widget _buildValueCard({
-    required String title,
-    required String value,
-    required Color color,
-    required IconData icon,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [color.withOpacity(0.3), color.withOpacity(0.1)],
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.5)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: color, size: 16),
-              const SizedBox(width: 4),
-              Text(
-                title,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
+  // KEEPING THE ORIGINAL MOVES LEFT CONTAINER AS REQUESTED
   Widget _buildInfoContainer({
     required String title,
     required String value,
@@ -791,26 +866,95 @@ class _HardModeState extends State<HardMode> {
     );
   }
 
+  Widget _buildValueCard({
+    required String title,
+    required String value,
+    required Color color,
+    required IconData icon,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [color.withOpacity(0.25), color.withOpacity(0.1)],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.4)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: color, size: 16),
+                const SizedBox(width: 6),
+                Text(
+                  title.toUpperCase(),
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildCoinDisplay() {
     return Consumer<CoinService>(
       builder: (context, coinService, child) {
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          margin: const EdgeInsets.only(right: 8),
           decoration: BoxDecoration(
-            color: Colors.amber.withOpacity(0.2),
+            gradient: const LinearGradient(
+              colors: [Color(0xFFFFD700), Color(0xFFFFC400)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.amber),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.amber.withOpacity(0.4),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.monetization_on, color: Colors.amber, size: 16),
-              const SizedBox(width: 4),
+              const Icon(Icons.monetization_on_rounded, 
+                color: Colors.white, 
+                size: 18,
+              ),
+              const SizedBox(width: 6),
               Text(
                 coinService.coins.toString(),
                 style: const TextStyle(
-                  color: Colors.amber,
-                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
                 ),
               ),
             ],

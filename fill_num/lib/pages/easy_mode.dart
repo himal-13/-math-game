@@ -237,23 +237,25 @@ class _EasyModeState extends State<EasyMode> {
   Widget _buildLevelSelectionPage() {
     return Column(
       children: [
-        const Padding(
-          padding: EdgeInsets.only(top: 24.0, bottom: 16.0),
-          child: Text(
-            'Select a Level',
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
+        //unlock all levels for debugging
+        ElevatedButton(
+          onPressed: () {
+            setState(() {
+              _unlockedLevelsCount = _levels.length;
+              _saveUnlockedLevels();
+            });
+          },
+          child: const Text('Unlock All Levels'),
         ),
+        
+        
+        
         Expanded(
           child: GridView.builder(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
+              crossAxisCount: 5,
+              crossAxisSpacing: 2,
+              mainAxisSpacing: 2,
             ),
             itemCount: _levels.length,
             itemBuilder: (context, index) {
@@ -276,13 +278,12 @@ class _EasyModeState extends State<EasyMode> {
                     Text(
                       '${index + 1}',
                       style: const TextStyle(
-                        fontSize: 20,
+                        fontSize: 10,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
-                    if (!isUnlocked)
-                      const Icon(Icons.lock, color: Colors.white, size: 22),
+                    
                   ],
                 ),
               );
