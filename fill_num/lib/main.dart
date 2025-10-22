@@ -1,13 +1,24 @@
 import 'package:fill_num/home_page.dart';
-import 'package:fill_num/utils/coin_service.dart';
+import 'package:fill_num/utils/hint_service.dart';
 import 'package:flutter/material.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  //initilize hive
+
+  Hive.initFlutter();
+  await Hive.openBox('hints_countbox');
+  await Hive.openBox("easy_mode_level");
+  await Hive.openBox("medium_mode_level");
+  await Hive.openBox("hard_mode_level");
+  await Hive.openBox("expert_mode_level");
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (context) => CoinService()),
+        ChangeNotifierProvider(create: (context) => HintService()),
         // Add other providers here
       ],
       child: const MyApp(),

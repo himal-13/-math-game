@@ -1,4 +1,4 @@
-import 'package:fill_num/utils/coin_service.dart';
+import 'package:fill_num/utils/hint_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -10,13 +10,13 @@ class CoinPage extends StatefulWidget {
 }
 
 class _CoinPageState extends State<CoinPage> {
-  final List<Map<String, dynamic>> _coinPackages = [
-    {'coins': 100, 'price': '\$0.99', 'bonus': 0, 'color': Colors.blue},
-    {'coins': 300, 'price': '\$2.99', 'bonus': 50, 'color': Colors.green},
-    {'coins': 500, 'price': '\$4.99', 'bonus': 100, 'color': Colors.orange},
-    {'coins': 1000, 'price': '\$8.99', 'bonus': 300, 'color': Colors.purple},
-    {'coins': 2500, 'price': '\$19.99', 'bonus': 1000, 'color': Colors.red},
-    {'coins': 5000, 'price': '\$34.99', 'bonus': 2500, 'color': Colors.amber},
+  final List<Map<String, dynamic>> _hintPackages = [
+    {'hints': 5, 'price': '\$0.99', 'bonus': 0, 'color': Colors.blue},
+    {'hints': 15, 'price': '\$2.99', 'bonus': 3, 'color': Colors.green},
+    {'hints': 25, 'price': '\$4.99', 'bonus': 5, 'color': Colors.orange},
+    {'hints': 50, 'price': '\$8.99', 'bonus': 15, 'color': Colors.purple},
+    {'hints': 125, 'price': '\$19.99', 'bonus': 50, 'color': Colors.red},
+    {'hints': 250, 'price': '\$34.99', 'bonus': 125, 'color': Colors.amber},
   ];
 
   @override
@@ -25,7 +25,7 @@ class _CoinPageState extends State<CoinPage> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         title: const Text(
-          'Coin Store',
+          'Hint Store',
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -53,10 +53,10 @@ class _CoinPageState extends State<CoinPage> {
               children: [
                 _buildCurrentBalance(),
                 const SizedBox(height: 20),
-                _buildFreeCoinsSection(),
+                _buildFreeHintsSection(),
                 const SizedBox(height: 20),
                 Expanded(
-                  child: _buildCoinPackages(),
+                  child: _buildHintPackages(),
                 ),
               ],
             ),
@@ -67,8 +67,8 @@ class _CoinPageState extends State<CoinPage> {
   }
 
   Widget _buildCurrentBalance() {
-    return Consumer<CoinService>(
-      builder: (context, coinService, child) {
+    return Consumer<HintService>(
+      builder: (context, hintService, child) {
         return Container(
           width: double.infinity,
           padding: const EdgeInsets.all(20),
@@ -90,7 +90,7 @@ class _CoinPageState extends State<CoinPage> {
           child: Column(
             children: [
               const Text(
-                'Your Balance',
+                'Your Hints',
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: 16,
@@ -101,13 +101,13 @@ class _CoinPageState extends State<CoinPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(
-                    Icons.monetization_on,
+                    Icons.lightbulb_outline,
                     color: Colors.yellow,
                     size: 32,
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '${coinService.coins}',
+                    '${hintService.hints}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 36,
@@ -123,7 +123,7 @@ class _CoinPageState extends State<CoinPage> {
     );
   }
 
-  Widget _buildFreeCoinsSection() {
+  Widget _buildFreeHintsSection() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -138,7 +138,7 @@ class _CoinPageState extends State<CoinPage> {
               Icon(Icons.card_giftcard, color: Colors.green, size: 20),
               SizedBox(width: 8),
               Text(
-                'Free Coins',
+                'Free Hints',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -151,19 +151,19 @@ class _CoinPageState extends State<CoinPage> {
           Row(
             children: [
               Expanded(
-                child: _buildFreeCoinButton(
+                child: _buildFreeHintButton(
                   title: 'Watch Ad',
-                  coins: 25,
+                  hints: 2,
                   icon: Icons.play_arrow,
                   color: Colors.blue,
-                  onTap: _watchAdForCoins,
+                  onTap: _watchAdForHints,
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _buildFreeCoinButton(
+                child: _buildFreeHintButton(
                   title: 'Daily Bonus',
-                  coins: 50,
+                  hints: 5,
                   icon: Icons.calendar_today,
                   color: Colors.orange,
                   onTap: _claimDailyBonus,
@@ -176,9 +176,9 @@ class _CoinPageState extends State<CoinPage> {
     );
   }
 
-  Widget _buildFreeCoinButton({
+  Widget _buildFreeHintButton({
     required String title,
-    required int coins,
+    required int hints,
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
@@ -207,10 +207,10 @@ class _CoinPageState extends State<CoinPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.monetization_on, size: 14, color: Colors.yellow),
+              const Icon(Icons.lightbulb_outline, size: 14, color: Colors.yellow),
               const SizedBox(width: 2),
               Text(
-                '+$coins',
+                '+$hints',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -224,13 +224,13 @@ class _CoinPageState extends State<CoinPage> {
     );
   }
 
-  Widget _buildCoinPackages() {
+  Widget _buildHintPackages() {
     return Column(
       children: [
         const Padding(
           padding: EdgeInsets.only(bottom: 16.0),
           child: Text(
-            'Coin Packages',
+            'Hint Packages',
             style: TextStyle(
               color: Colors.white,
               fontSize: 20,
@@ -246,10 +246,10 @@ class _CoinPageState extends State<CoinPage> {
               mainAxisSpacing: 12,
               childAspectRatio: 0.8,
             ),
-            itemCount: _coinPackages.length,
+            itemCount: _hintPackages.length,
             itemBuilder: (context, index) {
-              final package = _coinPackages[index];
-              return _buildCoinPackageCard(package);
+              final package = _hintPackages[index];
+              return _buildHintPackageCard(package);
             },
           ),
         ),
@@ -257,11 +257,11 @@ class _CoinPageState extends State<CoinPage> {
     );
   }
 
-  Widget _buildCoinPackageCard(Map<String, dynamic> package) {
-    final totalCoins = package['coins'] + package['bonus'];
+  Widget _buildHintPackageCard(Map<String, dynamic> package) {
+    final totalHints = package['hints'] + package['bonus'];
     
     return GestureDetector(
-      onTap: () => _purchaseCoins(package),
+      onTap: () => _purchaseHints(package),
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -310,10 +310,10 @@ class _CoinPageState extends State<CoinPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.monetization_on, color: Colors.yellow, size: 24),
+                    const Icon(Icons.lightbulb_outline, color: Colors.yellow, size: 24),
                     const SizedBox(width: 4),
                     Text(
-                      totalCoins.toString(),
+                      totalHints.toString(),
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -334,7 +334,7 @@ class _CoinPageState extends State<CoinPage> {
                 if (package['bonus'] > 0) ...[
                   const SizedBox(height: 4),
                   Text(
-                    '${package['coins']} + ${package['bonus']} bonus',
+                    '${package['hints']} + ${package['bonus']} bonus',
                     style: const TextStyle(
                       fontSize: 12,
                       color: Colors.white60,
@@ -349,7 +349,7 @@ class _CoinPageState extends State<CoinPage> {
     );
   }
 
-  void _watchAdForCoins() async {
+  void _watchAdForHints() async {
     // Show loading
     showDialog(
       context: context,
@@ -370,13 +370,13 @@ class _CoinPageState extends State<CoinPage> {
 
     Navigator.pop(context); // Remove loading dialog
 
-    final coinService = Provider.of<CoinService>(context, listen: false);
-    await coinService.addCoins(25);
+    final hintService = Provider.of<HintService>(context, listen: false);
+    await hintService.addHints(2);
 
     // Show success message
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('+25 coins added! Thanks for watching!'),
+        content: const Text('+2 hints added! Thanks for watching!'),
         backgroundColor: Colors.green,
         behavior: SnackBarBehavior.floating,
       ),
@@ -384,26 +384,26 @@ class _CoinPageState extends State<CoinPage> {
   }
 
   void _claimDailyBonus() async {
-    final coinService = Provider.of<CoinService>(context, listen: false);
-    await coinService.addCoins(50);
+    final hintService = Provider.of<HintService>(context, listen: false);
+    await hintService.addHints(5);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('+50 coins added! Daily bonus claimed!'),
+        content: const Text('+5 hints added! Daily bonus claimed!'),
         backgroundColor: Colors.green,
         behavior: SnackBarBehavior.floating,
       ),
     );
   }
 
-  void _purchaseCoins(Map<String, dynamic> package) {
+  void _purchaseHints(Map<String, dynamic> package) {
     // In a real app, this would integrate with your payment system
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Purchase Coins'),
+        title: const Text('Purchase Hints'),
         content: Text(
-          'Purchase ${package['coins']} coins for ${package['price']}?',
+          'Purchase ${package['hints']} hints for ${package['price']}?',
         ),
         actions: [
           TextButton(
@@ -413,9 +413,13 @@ class _CoinPageState extends State<CoinPage> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
+              // In a real app, you would process payment here
+              final hintService = Provider.of<HintService>(context, listen: false);
+              hintService.addHints(package['hints'] + package['bonus']);
+              
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Purchase successful! ${package['coins']} coins added.'),
+                  content: Text('Purchase successful! ${package['hints'] + package['bonus']} hints added.'),
                   backgroundColor: Colors.green,
                 ),
               );

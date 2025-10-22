@@ -1,10 +1,10 @@
-import 'package:fill_num/components/getmorecoin_dialog.dart';
+import 'package:fill_num/components/getmore_hint_dialog.dart';
 import 'package:fill_num/constants/easy_levels.dart';
 import 'package:fill_num/pages/coin_page.dart';
-import 'package:fill_num/utils/coin_service.dart';
+import 'package:fill_num/utils/hint_service.dart';
 import 'package:flutter/material.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class EasyMode extends StatefulWidget {
   const EasyMode({super.key});
@@ -15,7 +15,7 @@ class EasyMode extends StatefulWidget {
 
 class _EasyModeState extends State<EasyMode> {
   static const String _unlockedLevelsKey = 'unlocked_levels';
-  static const int _hintCost = 15;
+  static const int _hintCost = 1; // Reduced cost since we're using hints
 
   final List<Map<String, dynamic>> _levels = easyLevels;
   int _currentNumber = 0;
@@ -31,26 +31,61 @@ class _EasyModeState extends State<EasyMode> {
   bool _showLevelSelect = false;
   int _hintTileIndex = -1;
 
-  SharedPreferences? _prefs;
+  late Box _gameBox = Hive.box('easy_mode_level');
 
   @override
   void initState() {
     super.initState();
-    // loadInterstitialAd(useAdUnit2: false);
-    _initSharedPreferences();
+
+    _initHiveAndLoad();
   }
 
-  void _initSharedPreferences() async {
-    _prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _unlockedLevelsCount = _prefs!.getInt(_unlockedLevelsKey) ?? 1;
-    });
-    // Start the game at the last unlocked level.
-    _startGame(levelIndex: _unlockedLevelsCount - 1);
+  Future<void> _initHiveAndLoad() async {
+    try {
+      if (!Hive.isBoxOpen("easy_mode_level")) {
+        await Hive.openBox("easy_mode_level");
+      }
+      _gameBox = Hive.box("easy_mode_level");
+      await _loadGameData();
+    } catch (e, st) {
+      debugPrint('Error opening game_data box: $e\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to initialize game data storage')),
+        );
+      }
+    }
+  }
+
+  Future<void> _loadGameData() async {
+    try {
+      final unlockedLevels = _gameBox.get(_unlockedLevelsKey, defaultValue: 1);
+      setState(() {
+        _unlockedLevelsCount = unlockedLevels;
+      });
+      // Start the game at the last unlocked level.
+      _startGame(levelIndex: _unlockedLevelsCount - 1);
+    } catch (e, st) {
+      debugPrint('Failed to load game data: $e\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to load game data')));
+      }
+    }
   }
 
   void _saveUnlockedLevels() {
-    _prefs?.setInt(_unlockedLevelsKey, _unlockedLevelsCount);
+    try {
+      _gameBox.put(_unlockedLevelsKey, _unlockedLevelsCount);
+    } catch (e, st) {
+      debugPrint('Failed to save unlocked levels: $e\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to save progress')));
+      }
+    }
   }
 
   void _startGame({int levelIndex = 0}) {
@@ -88,41 +123,43 @@ class _EasyModeState extends State<EasyMode> {
     return true;
   }
 
-  void _purchaseHint() async {
-    // Check if a hint is already active.
-    if (_hintTileIndex != -1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('A hint is already showing.')),
-      );
-      return;
-    }
-
-    final coinService = Provider.of<CoinService>(context, listen: false);
-    final hasEnoughCoins = await coinService.spendCoins(_hintCost);
-
-    if (hasEnoughCoins) {
-      // Check if the current moves are on the correct solution path.
-      if (!_checkIfOnSolutionPath()) {
-        // If not, reset the game state to the beginning.
-        setState(() {
-          final levelData = _levels[_currentLevelIndex];
-          _currentNumber = levelData['start']!;
-          _movesRemaining = levelData['moves']!;
-          _usedTileIndices.clear();
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Wrong path! The board has been reset.'),
-          ),
-        );
-      }
-      _getHint();
-    } else {
-      showNotEnoughCoinsDialog(context);
-    }
+ void _purchaseHint() async {
+  // Check if a hint is already active.
+  if (_hintTileIndex != -1) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('A hint is already showing.')),
+    );
+    return;
   }
 
-  void _getHint() {
+  final hintService = Provider.of<HintService>(context, listen: false);
+  
+  // Check if user has enough hints
+  if (hintService.hints >= _hintCost) {
+    // Use hint
+    await hintService.useHint();
+    
+    // Check if the current moves are on the correct solution path.
+    if (!_checkIfOnSolutionPath()) {
+      // If not, reset the game state to the beginning.
+      setState(() {
+        final levelData = _levels[_currentLevelIndex];
+        _currentNumber = levelData['start']!;
+        _movesRemaining = levelData['moves']!;
+        _usedTileIndices.clear();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Wrong path! The board has been reset.'),
+        ),
+      );
+    }
+    _getHint();
+  } else {
+    showNotEnoughHintsDialog(context);
+  }
+
+}  void _getHint() {
     if (_usedTileIndices.length >= _levels[_currentLevelIndex]['sol']!.length) {
       return;
     }
@@ -247,9 +284,7 @@ class _EasyModeState extends State<EasyMode> {
           },
           child: const Text('Unlock All Levels'),
         ),
-        
-        
-        
+
         Expanded(
           child: GridView.builder(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -283,7 +318,6 @@ class _EasyModeState extends State<EasyMode> {
                         color: Colors.white,
                       ),
                     ),
-                    
                   ],
                 ),
               );
@@ -321,7 +355,7 @@ class _EasyModeState extends State<EasyMode> {
                 },
               ),
         actions: [
-          _showLevelSelect ? const SizedBox.shrink() : _buildCoinDisplay(),
+          _showLevelSelect ? const SizedBox.shrink() : _buildHintDisplay(),
         ],
       ),
       body: Container(
@@ -344,9 +378,9 @@ class _EasyModeState extends State<EasyMode> {
     );
   }
 
-  Widget _buildCoinDisplay() {
-    return Consumer<CoinService>(
-      builder: (context, coinService, child) {
+  Widget _buildHintDisplay() {
+    return Consumer<HintService>(
+      builder: (context, hintService, child) {
         return GestureDetector(
           onTap: () => Navigator.push(
             context,
@@ -364,13 +398,13 @@ class _EasyModeState extends State<EasyMode> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(
-                  Icons.monetization_on,
+                  Icons.lightbulb_outline,
                   color: Colors.yellow,
                   size: 20,
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  '${coinService.coins}',
+                  '${hintService.hints}',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -523,7 +557,7 @@ class _EasyModeState extends State<EasyMode> {
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
-                          Icons.monetization_on,
+                          Icons.lightbulb_outline,
                           size: 16,
                           color: Colors.black,
                         ),
@@ -533,9 +567,9 @@ class _EasyModeState extends State<EasyMode> {
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Hint (15)',
-                style: TextStyle(color: Colors.white, fontSize: 14),
+              Text(
+                'Hint ($_hintCost)',
+                style: const TextStyle(color: Colors.white, fontSize: 14),
               ),
             ],
           ),

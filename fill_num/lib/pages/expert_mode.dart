@@ -1,13 +1,13 @@
-import 'package:fill_num/components/getmorecoin_dialog.dart';
+import 'package:fill_num/components/getmore_hint_dialog.dart';
 import 'package:fill_num/components/concept_explanation_dialog.dart';
 import 'package:fill_num/constants/expert_levels.dart';
 import 'package:fill_num/constants/hard_levels.dart';
 import 'package:fill_num/utils/audio_manager.dart';
-import 'package:fill_num/utils/coin_service.dart';
+import 'package:fill_num/utils/hint_service.dart';
 import 'package:flutter/material.dart';
 import 'package:fraction/fraction.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math' as math;
 
 class ExtremeGrid extends StatefulWidget {
@@ -19,68 +19,92 @@ class ExtremeGrid extends StatefulWidget {
 
 class _ExtremeGridState extends State<ExtremeGrid> {
   static const String _unlockedLevelsKey = 'unlocked_extreme_levels';
-  static const int _hintCost = 30;
-  // static const String _autoShowConceptKey = 'auto_show_concept';
+  static const int _hintCost = 3; // Reduced cost for hints
 
-  // When true, show concept dialog automatically on level start/restart.
-  // bool _autoShowConcept = true;
-
-  late Fraction _currentValue;
-  late Fraction _targetValue;
-  late int _movesLeft;
-  late List<Operation> _operations;
-  late List<bool> _isUsed;
-  late SharedPreferences _prefs;
+  // Initialize variables with default values to avoid LateInitializationError
+  Fraction _currentValue = Fraction(0);
+  Fraction _targetValue = Fraction(0);
+  int _movesLeft = 0;
+  List<Operation> _operations = [];
+  List<bool> _isUsed = [];
+  late Box _gameBox;
   bool _isGameWon = false;
   bool _isGameOver = false;
   int _currentLevelIndex = 0;
   int _unlockedLevelsCount = 1;
   bool _showLevelSelect = false;
   int _hintTileIndex = -1;
-  late List<Operation> _solution;
+  List<Operation> _solution = [];
   String _gameOverReason = '';
 
   List<int> _usedTileIndices = [];
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _initSharedPreferences();
+    _initHiveAndLoad();
   }
 
-  void _initSharedPreferences() async {
-    _prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _unlockedLevelsCount = _prefs.getInt(_unlockedLevelsKey) ?? 1;
-      // _autoShowConcept = _prefs.getBool(_autoShowConceptKey) ?? true;
-      if (_unlockedLevelsCount > extremeLevels.length) {
-        _unlockedLevelsCount = extremeLevels.length;
+  Future<void> _initHiveAndLoad() async {
+    try {
+      if (!Hive.isBoxOpen('expert_mode_level')) {
+        await Hive.openBox('expert_mode_level');
       }
-    });
-    if (_unlockedLevelsCount - 1 < extremeLevels.length) {
-      _startGame(levelIndex: _unlockedLevelsCount - 1);
-    } else {
-      _startGame(levelIndex: 0);
+      _gameBox = Hive.box('expert_mode_level');
+      await _loadGameData();
+    } catch (e, st) {
+      debugPrint('Error opening expert_mode_level box: $e\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to initialize game data storage')),
+        );
+      }
+    }
+  }
+
+  Future<void> _loadGameData() async {
+    try {
+      final unlockedLevels = _gameBox.get(_unlockedLevelsKey, defaultValue: 1);
+      setState(() {
+        _unlockedLevelsCount = unlockedLevels;
+        if (_unlockedLevelsCount > extremeLevels.length) {
+          _unlockedLevelsCount = extremeLevels.length;
+        }
+      });
+      
+      // Start with level 0 by default, then adjust if unlocked levels exist
+      int startLevel = 0;
+      if (_unlockedLevelsCount - 1 < extremeLevels.length && _unlockedLevelsCount > 0) {
+        startLevel = _unlockedLevelsCount - 1;
+      }
+      
+      _startGame(levelIndex: startLevel);
+      setState(() {
+        _isInitialized = true;
+      });
+    } catch (e, st) {
+      debugPrint('Failed to load game data: $e\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load game data')),
+        );
+      }
     }
   }
 
   void _saveProgress() {
-    _prefs.setInt(_unlockedLevelsKey, _unlockedLevelsCount);
+    try {
+      _gameBox.put(_unlockedLevelsKey, _unlockedLevelsCount);
+    } catch (e, st) {
+      debugPrint('Failed to save progress: $e\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save progress')),
+        );
+      }
+    }
   }
-
-  // void _saveAutoShowPreference() {
-  //   _prefs.setBool(_autoShowConceptKey, _autoShowConcept);
-  // }
-
-  // void _showConceptExplanation() {
-  //   if (!_autoShowConcept) return;
-  //   final level = extremeLevels[_currentLevelIndex];
-  //   if (level.description.isNotEmpty) {
-  //     WidgetsBinding.instance.addPostFrameCallback((_) {
-  //       showConceptExplanationDialog(context, level.description);
-  //     });
-  //   }
-  // }
 
   void _startGame({int levelIndex = 0}) {
     if (levelIndex >= extremeLevels.length) {
@@ -107,7 +131,44 @@ class _ExtremeGridState extends State<ExtremeGrid> {
       _isUsed = List.filled(_operations.length, false);
       _usedTileIndices = [];
     });
-    // do not auto-show concept on start
+  }
+
+  // Color scheme matching hard_mode
+  Color _getOperationColor(Operation op) {
+    switch (op.type) {
+      case '+':
+      case '-':
+        return const Color(0xFF1E88E5);
+      case '*':
+      case '/':
+        return const Color(0xFF43A047);
+      case '^2':
+      case '^3':
+        return const Color(0xFFFFB300);
+      case '+%':
+      case '-%':
+        return const Color(0xFFF4511E);
+      case '√':
+      case '∛':
+        return const Color(0xFF8E24AA);
+      case '!': // Factorial
+      case 'nextPrime':
+      case 'prevPrime':
+      case 'isPrime':
+        return const Color(0xFF7C4DFF);
+      case 'φ': // Euler's totient
+      case 'σ': // Sum of divisors
+      case 'τ': case 'd': case 'μ': case 's': case 'rad': // Number Theory
+        return const Color(0xFF8E24AA);
+      case 'sumD': case 'prodD': case 'rev': case 'dRoot': case 'len': // Digit-based
+        return const Color(0xFFAD1457);
+      case 'C': case 'P': case 'sum1toN': case 'prod1toN': // Combinatorics
+        return const Color(0xFF283593);
+      case 'tri': case 'pent': case 'hex': case 'centSq': // Figurate Numbers
+        return const Color(0xFF00695C);
+      default:
+        return const Color.fromARGB(255, 104, 58, 183);
+    }
   }
 
   void _applyOperation(int index) {
@@ -254,7 +315,7 @@ class _ExtremeGridState extends State<ExtremeGrid> {
     });
   }
 
-  // Mathematical function implementations
+  // All the mathematical function implementations remain the same...
   Fraction _power(Fraction base, Fraction exponent) {
     final baseDouble = base.toDouble();
     final exponentDouble = exponent.toDouble();
@@ -263,39 +324,54 @@ class _ExtremeGridState extends State<ExtremeGrid> {
   }
 
   Fraction _factorial(Fraction value) {
+    // Only allow factorial for non-negative integers.
     if (value < Fraction(0, 1)) {
       throw Exception('Factorial of negative number');
     }
-    
-    final intValue = value.toDouble().round();
-    if ((value.toDouble() - intValue).abs() > 0.0001) {
-      // Use gamma function approximation for non-integers
-      return Fraction.fromDouble(_gamma(value.toDouble() + 1));
-    }
-    
-    int result = 1;
-    for (int i = 2; i <= intValue; i++) {
-      result *= i;
-    }
-    return Fraction(result, 1);
-  }
 
-  double _gamma(double x) {
-    // Simple gamma function approximation
-    if (x <= 0) return double.infinity;
-    if (x == 1) return 1;
-    if (x < 1) return _gamma(x + 1) / x;
-    return math.sqrt(2 * math.pi / x) * math.pow(x / math.e, x);
-  }
+   final doubleVal = value.toDouble();
+   final int intValue = doubleVal.round();
+   // require exact integer (with small tolerance)
+   if ((doubleVal - intValue).abs() > 0.000001) {
+     throw Exception('Factorial is only defined for non-negative integers');
+   }
+
+   int result = 1;
+   for (int i = 2; i <= intValue; i++) {
+     result *= i;
+   }
+   return Fraction(result, 1);
+   }
 
   Fraction _modulus(Fraction value, Fraction modulus) {
     if (modulus == Fraction(0, 1)) {
       throw Exception('Division by zero in modulus');
     }
-    final valueDouble = value.toDouble();
-    final modulusDouble = modulus.toDouble();
-    final result = valueDouble % modulusDouble;
-    return Fraction.fromDouble(result);
+
+    // Exact rational modulus: r = value - floor(value / modulus) * modulus
+    // value = A / B, modulus = M / N => value/modulus = (A * N) / (B * M)
+    final int A = value.numerator;
+    final int B = value.denominator;
+    final int M = modulus.numerator;
+    final int N = modulus.denominator;
+
+    final int num = A * N;
+    final int den = B * M;
+
+    // floor division for possibly negative numerator/denominator
+    int q = _floorDivInt(num, den);
+
+    // remainder = value - modulus * q = A/B - (M/N)*q
+    final Fraction rem = Fraction(A * N - M * q * B, B * N);
+    return rem.reduce();
+  }
+
+  int _floorDivInt(int a, int b) {
+    if (b == 0) throw Exception('Division by zero');
+    int q = a ~/ b; // truncating division
+    // if signs differ and not exact, adjust to floor
+    if ((a ^ b) < 0 && a % b != 0) q -= 1;
+    return q;
   }
 
   Fraction _log10(Fraction value) {
@@ -346,7 +422,9 @@ class _ExtremeGridState extends State<ExtremeGrid> {
     int temp = n;
     for (int i = 2; i * i <= temp; i++) {
       if (temp % i == 0) {
-        while (temp % i == 0) temp ~/= i;
+        while (temp % i == 0) {
+          temp ~/= i;
+        }
         result -= result ~/ i;
       }
     }
@@ -363,7 +441,6 @@ class _ExtremeGridState extends State<ExtremeGrid> {
     return Fraction(sum, 1);
   }
 
-  // New Number Theory Functions
   Fraction _tauFunction(Fraction value) {
     final n = value.toDouble().round();
     if (n < 1) return Fraction(0, 1);
@@ -385,7 +462,9 @@ class _ExtremeGridState extends State<ExtremeGrid> {
       if (temp % i == 0) {
         primeFactors++;
         if (temp % (i * i) == 0) return Fraction(0, 1); // has square factor
-        while (temp % i == 0) temp ~/= i;
+        while (temp % i == 0) {
+          temp ~/= i;
+        }
       }
     }
     return Fraction(primeFactors % 2 == 0 ? 1 : -1, 1);
@@ -409,13 +488,14 @@ class _ExtremeGridState extends State<ExtremeGrid> {
     for (int i = 2; i <= temp; i++) {
       if (temp % i == 0) {
         product *= i;
-        while (temp % i == 0) temp ~/= i;
+        while (temp % i == 0) {
+          temp ~/= i;
+        }
       }
     }
     return Fraction(product, 1);
   }
 
-  // New Digit-based Functions
   Fraction _sumDigits(Fraction value) {
     final n = value.toDouble().abs().round();
     int sum = 0;
@@ -461,7 +541,6 @@ class _ExtremeGridState extends State<ExtremeGrid> {
     return Fraction(n.toString().length, 1);
   }
 
-  // New Combinatorics
   Fraction _combination(Fraction n, Fraction k) {
     final nVal = n.toDouble().round();
     final kVal = k.toDouble().round();
@@ -494,7 +573,6 @@ class _ExtremeGridState extends State<ExtremeGrid> {
     return Fraction(n * (n + 1) ~/ 2, 1);
   }
 
-  // New Figurate Numbers
   Fraction _triangularNumber(Fraction value) {
     final n = value.toDouble().round();
     if (n < 1) return Fraction(0, 1);
@@ -519,7 +597,6 @@ class _ExtremeGridState extends State<ExtremeGrid> {
     return Fraction(n * n + (n - 1) * (n - 1), 1);
   }
 
-  // Existing methods from hardcore mode
   Fraction _calculateSquareRoot(Fraction value) {
     final numerator = value.numerator.toDouble();
     final denominator = value.denominator.toDouble();
@@ -611,45 +688,48 @@ class _ExtremeGridState extends State<ExtremeGrid> {
       return;
     }
 
-    final coinService = Provider.of<CoinService>(context, listen: false);
-    final hasEnoughCoins = await coinService.spendCoins(_hintCost);
-    if (!hasEnoughCoins) {
-      showNotEnoughCoinsDialog(context);
-      return;
-    }
+    final hintService = Provider.of<HintService>(context, listen: false);
+    
+    // Check if user has enough hints
+    if (hintService.hints >= _hintCost) {
+      // Use hint
+      await hintService.useHint();
 
-    int movesMade = _usedTileIndices.length;
-    bool needsReset = false;
-    for (int i = 0; i < movesMade; i++) {
-      if (i >= _solution.length) {
-        needsReset = true;
-        break;
+      int movesMade = _usedTileIndices.length;
+      bool needsReset = false;
+      for (int i = 0; i < movesMade; i++) {
+        if (i >= _solution.length) {
+          needsReset = true;
+          break;
+        }
+        final userOp = _operations[_usedTileIndices[i]];
+        final solOp = _solution[i];
+        if (userOp.type != solOp.type || userOp.value != solOp.value) {
+          needsReset = true;
+          break;
+        }
       }
-      final userOp = _operations[_usedTileIndices[i]];
-      final solOp = _solution[i];
-      if (userOp.type != solOp.type || userOp.value != solOp.value) {
-        needsReset = true;
-        break;
-      }
-    }
 
-    if (needsReset) {
-      _startGame(levelIndex: _currentLevelIndex);
-      await Future.delayed(const Duration(milliseconds: 300));
+      if (needsReset) {
+        _startGame(levelIndex: _currentLevelIndex);
+        await Future.delayed(const Duration(milliseconds: 300));
+        setState(() {
+          _hintTileIndex = _findNextHintIndex(0);
+        });
+        return;
+      }
+
+      int nextHintStep = movesMade;
+      int nextHintIndex = _findNextHintIndex(nextHintStep);
+
       setState(() {
-        _hintTileIndex = _findNextHintIndex(0);
+        if (nextHintIndex != -1) {
+          _hintTileIndex = nextHintIndex;
+        }
       });
-      return;
+    } else {
+       showNotEnoughHintsDialog(context);
     }
-
-    int nextHintStep = movesMade;
-    int nextHintIndex = _findNextHintIndex(nextHintStep);
-
-    setState(() {
-      if (nextHintIndex != -1) {
-        _hintTileIndex = nextHintIndex;
-      }
-    });
   }
 
   int _findNextHintIndex(int step) {
@@ -704,8 +784,8 @@ class _ExtremeGridState extends State<ExtremeGrid> {
     // Combinatorics
     case 'C': return 'C(${_formatValue(op.value)})';
     case 'P': return 'P(${_formatValue(op.value)})';
-    case '∑': return 'Σ(n)';
-    case '∏': return 'Π(n)';
+    case 'sum1toN': return 'Σ(n)';
+    case 'prod1toN': return 'Π(n)';
     
     // Figurate Numbers
     case 'tri': return 'tri(n)';
@@ -716,78 +796,59 @@ class _ExtremeGridState extends State<ExtremeGrid> {
     default: return '${op.type}${_formatValue(op.value)}';
   }
 }
- Color _getOperationColor(String type) {
-    switch (type) {
-      case '%': // modulus
-      case 'mod':
-        return const Color(0xFFFFB300); // saturated amber
-      case '√':
-      case '∛': // roots
-        return const Color(0xFF00BFA5); // saturated teal
-      case '/':
-      case '1/x':
-        return const Color(0xFF2962FF); // saturated indigo
-      case '*':
-      case '^':
-      case '^2':
-      case '^3':
-        return const Color(0xFF2E7D32); // saturated green
-      case '+':
-      case '-':
-      case '+%':
-      case '-%':
-        return const Color(0xFF00ACC1); // saturated cyan
-      case '!': // factorial
-        return const Color(0xFF7C4DFF); // saturated purple
-      case 'log':
-        return const Color(0xFF1976D2); // saturated blue
-      case 'nextPrime':
-      case 'prevPrime':
-      case 'isPrime':
-      case 'φ':
-      case 'σ':
-        return const Color(0xFFEF6C00); // saturated deep orange
-      
-      // Number Theory Functions
-      case 'τ': case 'd': case 'μ': case 's': case 'rad':
-        return const Color(0xFF8E24AA); // Deep purple
-      
-      // Digit-based Functions
-      case 'sumD': case 'prodD': case 'rev': case 'dRoot': case 'len':
-        return const Color(0xFFAD1457); // Pink
-      
-      // Combinatorics
-      case 'C': case 'P': case 'sum1toN': case 'prod1toN':
-        return const Color(0xFF283593); // Indigo
-      
-      // Figurate Numbers
-      case 'tri': case 'pent': case 'hex': case 'centSq':
-        return const Color(0xFF00695C); // Teal
-      
-      default:
-        return const Color(0xFF00695C); // fallback teal
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF121212),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFF7C4DFF)),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Loading Extreme Mode...',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
-      backgroundColor: const Color(0xFF121212), // darker navy background
+      backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
         title: Text(
-          _showLevelSelect ? 'Select Extreme Level' : 'Extreme Level ${_currentLevelIndex + 1}',
+          _showLevelSelect ? 'Select Level' : 'Extreme Level ${_currentLevelIndex + 1}',
           style: const TextStyle(
-            color: Color(0xFF00BFA5), // teal accent for title
-            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
           ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: Icon(
-            _showLevelSelect ? Icons.arrow_back : Icons.list,
-            color: const Color(0xFF00BFA5),
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              _showLevelSelect ? Icons.arrow_back_ios_new_rounded : Icons.list_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
           ),
           onPressed: () {
             setState(() {
@@ -795,20 +856,22 @@ class _ExtremeGridState extends State<ExtremeGrid> {
             });
           },
         ),
-        actions: [_buildCoinDisplay()],
+        actions: [_buildHintDisplay()],
       ),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF071023), Color(0xFF091827)], // subtle navy gradient
+            colors: [Color(0xFF1E1E1E), Color(0xFF121212)],
           ),
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: _showLevelSelect ? _buildLevelSelectionPage() : _buildGamePage(),
+            padding: const EdgeInsets.all(20.0),
+            child: _showLevelSelect
+                ? _buildLevelSelectionPage()
+                : _buildGamePage(),
           ),
         ),
       ),
@@ -817,50 +880,91 @@ class _ExtremeGridState extends State<ExtremeGrid> {
 
   Widget _buildLevelSelectionPage() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Extreme Mode',
-          style: TextStyle(
-            color: Color(0xFF2962FF), // saturated indigo
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
+        const Padding(
+          padding: EdgeInsets.only(bottom: 20),
+          child: Text(
+            'Extreme Levels',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
-        const SizedBox(height: 10),
-        const Text(
-          'Advanced mathematical operations',
-          style: TextStyle(
-            color: Color(0xFF00BFA5), // teal accent
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 20),
         Expanded(
           child: GridView.builder(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
+              crossAxisCount: 5,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
             ),
             itemCount: extremeLevels.length,
             itemBuilder: (context, index) {
               final isUnlocked = index < _unlockedLevelsCount;
-              return ElevatedButton(
-                onPressed: isUnlocked ? () => _startGame(levelIndex: index) : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isUnlocked
-                      ? const Color(0xFF2962FF) // saturated indigo for unlocked
-                      : const Color(0xFF37474F), // dark slate for locked
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              final isCurrent = index == _currentLevelIndex;
+              
+              return GestureDetector(
+                onTap: isUnlocked ? () => _startGame(levelIndex: index) : null,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: isUnlocked
+                        ? (isCurrent 
+                            ? const LinearGradient(
+                                colors: [Color(0xFF7C4DFF), Color(0xFF448AFF)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                            : LinearGradient(
+                                colors: [
+                                  Colors.white.withOpacity(0.15),
+                                  Colors.white.withOpacity(0.05)
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ))
+                        : LinearGradient(
+                            colors: [
+                              Colors.grey.withOpacity(0.3),
+                              Colors.grey.withOpacity(0.1)
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                    borderRadius: BorderRadius.circular(16),
+                    border: isCurrent 
+                        ? Border.all(color: Colors.white, width: 2)
+                        : Border.all(color: Colors.white.withOpacity(0.2), width: 1),
+                    boxShadow: [
+                      if (isUnlocked)
+                        BoxShadow(
+                          color: Colors.purple.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                    ],
                   ),
-                ),
-                child: Text(
-                  '${index + 1}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '${index + 1}',
+                          style: TextStyle(
+                            color: isUnlocked ? Colors.white : Colors.grey,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        if (!isUnlocked)
+                          const Icon(
+                            Icons.lock,
+                            color: Colors.grey,
+                            size: 12,
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -877,40 +981,39 @@ class _ExtremeGridState extends State<ExtremeGrid> {
       children: [
         // Game info section
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: const Color(0xFF09101A), // deep desaturated card background
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.45),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ],
+            color: Colors.white.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
           child: Column(
             children: [
-              
+              // Moves left indicator
               _buildInfoContainer(
                 title: 'Moves Left',
                 value: _movesLeft.toString(),
-                color: _movesLeft < 3 ? const Color(0xFFFFB300) : const Color(0xFF00BFA5),
+                color: _movesLeft < 3 ? Colors.red : Colors.green,
               ),
               const SizedBox(height: 16),
+
+              // Current and Target display
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
+                  // Current Value
                   _buildValueCard(
                     title: 'CURRENT',
                     value: _formatValue(_currentValue),
-                    color: const Color(0xFF00BFA5), // teal
+                    color: Colors.blue,
                     icon: Icons.play_arrow_rounded,
                   ),
+
+                  // Target Value
                   _buildValueCard(
                     title: 'TARGET',
                     value: _formatValue(_targetValue),
-                    color: const Color(0xFF7C4DFF), // purple
+                    color: Colors.green,
                     icon: Icons.flag_rounded,
                   ),
                 ],
@@ -918,60 +1021,80 @@ class _ExtremeGridState extends State<ExtremeGrid> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
 
+        // Game grid or game over screen
         if (_isGameOver && !_isGameWon) ...[
           Expanded(
             child: Center(
               child: Container(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(32),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.red.withOpacity(0.15),
+                      Colors.orange.withOpacity(0.1)
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(24),
                   border: Border.all(color: Colors.red.withOpacity(0.3)),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      Icons.cancel_rounded,
-                      color: Colors.red,
-                      size: 64,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Game Over!',
-                      style: TextStyle(
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.cancel_rounded,
                         color: Colors.red,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
+                        size: 64,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Game Over',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     Text(
                       _gameOverReason,
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.8),
                         fontSize: 16,
+                        fontWeight: FontWeight.w500,
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 28),
                     ElevatedButton(
                       onPressed: () => _startGame(levelIndex: _currentLevelIndex),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,
-                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 40,
+                          vertical: 16,
                         ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 4,
                       ),
                       child: const Text(
                         'Try Again',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -981,69 +1104,141 @@ class _ExtremeGridState extends State<ExtremeGrid> {
             ),
           ),
         ] else if (_isGameWon) ...[
-          Container(
-            margin: const EdgeInsets.only(top: 16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Text(
-              'Level Complete! Moving to next level...',
-              style: TextStyle(
-                color: Colors.green,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+          Expanded(
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.green.withOpacity(0.15),
+                      Colors.teal.withOpacity(0.1)
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.green.withOpacity(0.3)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.check_circle_rounded,
+                        color: Colors.green,
+                        size: 48,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Level Complete!',
+                      style: TextStyle(
+                        color: Colors.green,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Moving to next level...',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-          const Spacer(),
         ] else ...[
+          // Operation grid
           Expanded(
             child: GridView.builder(
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: level.cols,
-                crossAxisSpacing: 6,
-                mainAxisSpacing: 6,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 1.2,
               ),
               itemCount: _operations.length,
               itemBuilder: (context, index) {
                 final operation = _operations[index];
                 final isUsed = _isUsed[index];
                 final isHint = index == _hintTileIndex;
-
-                // select a saturated color for this operation type, then adjust for states
-                final opBase = _getOperationColor(operation.type);
-                final Color tileColor = isHint
-                    ? const Color(0xFFB2EBF2) // bright hint teal-cyan
-                    : isUsed
-                        ? const Color(0xFF263238) // muted dark used-tile
-                        : opBase.withOpacity(1.0);
+                final operationColor = _getOperationColor(operation);
 
                 return GestureDetector(
                   onTap: () => _applyOperation(index),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
                     decoration: BoxDecoration(
-                      color: tileColor,
-                      borderRadius: BorderRadius.circular(12),
+                      gradient: isHint
+                          ? const LinearGradient(
+                              colors: [Color(0xFF29B6F6), Color(0xFF03A9F4)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            )
+                          : isUsed
+                              ? LinearGradient(
+                                  colors: [
+                                    Colors.grey.withOpacity(0.3),
+                                    Colors.grey.withOpacity(0.1)
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                )
+                              : LinearGradient(
+                                  colors: [
+                                    operationColor.withOpacity(0.9),
+                                    operationColor.withOpacity(0.7)
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                      borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         if (!isUsed && !isHint)
                           BoxShadow(
-                            color: opBase.withOpacity(0.22),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+                            color: operationColor.withOpacity(0.4),
+                            blurRadius: 12,
+                            offset: const Offset(0, 6),
                           ),
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
                       ],
+                      border: Border.all(
+                        color: isHint 
+                            ? Colors.white 
+                            : Colors.white.withOpacity(0.1),
+                        width: isHint ? 2 : 1,
+                      ),
                     ),
                     child: Center(
                       child: Text(
                         _getOperationString(operation),
                         style: TextStyle(
-                          color: Colors.white.withOpacity(isUsed ? 0.6 : 0.98),
+                          color: Colors.white,
                           fontSize: _getOperationFontSize(operation.type),
                           fontWeight: FontWeight.w700,
                           decoration: isUsed ? TextDecoration.lineThrough : null,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 2,
+                              offset: const Offset(1, 1),
+                            ),
+                          ],
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -1054,69 +1249,91 @@ class _ExtremeGridState extends State<ExtremeGrid> {
             ),
           ),
 
+          const SizedBox(height: 20),
+
           // Action buttons
-          Column(
+          Row(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _getHint,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF00ACC1),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      icon: const Icon(Icons.lightbulb_outline, color: Colors.white),
-                      label: const Text('Hint(30)', style: TextStyle(color: Colors.white)),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _getHint,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 4,
+                  ),
+                  icon: const Icon(
+                    Icons.lightbulb_outline, color: Colors.yellow,
+                    size: 20,
+                  ),
+                  label: Text(
+                    'Hint($_hintCost)',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () => _startGame(levelIndex: _currentLevelIndex),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFFB300),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      icon: const Icon(Icons.refresh, color: Colors.white),
-                      label: const Text('Restart', style: TextStyle(color: Colors.white)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Concept button: opens the concept dialog on demand
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        final level = extremeLevels[_currentLevelIndex];
-                        if (level.description.isNotEmpty) {
-                          showConceptExplanationDialog(context, level.description);
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('No concept available for this level')),
-                          );
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF7C4DFF),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      icon: const Icon(Icons.menu_book, color: Colors.white),
-                      label: const Text('Concept', style: TextStyle(color: Colors.white)),
-                    ),
-                  ),
-                ],
+                ),
               ),
-              const SizedBox(height: 8),
-              // (Auto-show removed) Concept available via the Concept button only.
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _startGame(levelIndex: _currentLevelIndex),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 4,
+                  ),
+                  icon: const Icon(Icons.refresh_rounded, size: 20),
+                  label: const Text(
+                    '',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    final level = extremeLevels[_currentLevelIndex];
+                    if (level.description.isNotEmpty) {
+                      showConceptExplanationDialog(context, level.description);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('No concept available for this level')),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF7C4DFF),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 4,
+                  ),
+                  icon: const Icon(Icons.menu_book, size: 20),
+                  label: const Text(
+                    '',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ],
@@ -1171,49 +1388,50 @@ class _ExtremeGridState extends State<ExtremeGrid> {
     required Color color,
     required IconData icon,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            color.withOpacity(0.3),
-            color.withOpacity(0.1),
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [color.withOpacity(0.25), color.withOpacity(0.1)],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.4)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: color, size: 16),
+                const SizedBox(width: 6),
+                Text(
+                  title.toUpperCase(),
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.5)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: color, size: 16),
-              const SizedBox(width: 4),
-              Text(
-                title,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1261,26 +1479,41 @@ class _ExtremeGridState extends State<ExtremeGrid> {
     );
   }
 
-  Widget _buildCoinDisplay() {
-    return Consumer<CoinService>(
-      builder: (context, coinService, child) {
+  Widget _buildHintDisplay() {
+    return Consumer<HintService>(
+      builder: (context, hintService, child) {
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          margin: const EdgeInsets.only(right: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFF102027).withOpacity(0.9),
+            gradient: const LinearGradient(
+              colors: [Color(0xFFFFD700), Color(0xFFFFC400)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFFFB300)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.amber.withOpacity(0.4),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.monetization_on, color: Color(0xFFFFB300), size: 16),
+              const Icon(Icons.lightbulb_outline_rounded, 
+                color: Colors.white, 
+                size: 18,
+              ),
               const SizedBox(width: 6),
               Text(
-                coinService.coins.toString(),
+                hintService.hints.toString(),
                 style: const TextStyle(
-                  color: Color(0xFFFFB300),
-                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
                 ),
               ),
             ],

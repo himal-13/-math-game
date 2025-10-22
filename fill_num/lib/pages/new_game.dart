@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 
 class FractionFusionGame extends StatefulWidget {
+  const FractionFusionGame({super.key});
+
   @override
   _FractionFusionGameState createState() => _FractionFusionGameState();
 }
@@ -12,8 +14,8 @@ class _FractionFusionGameState extends State<FractionFusionGame> {
   int _lives = 3;
   double _currentValue = 0.5;
   double _targetValue = 0.75;
-  List<FractionPiece> _fallingPieces = [];
-  Random _random = Random();
+  final List<FractionPiece> _fallingPieces = [];
+  final Random _random = Random();
   bool _isGameOver = false;
 
   // Available fractions
@@ -158,7 +160,7 @@ class _FractionFusionGameState extends State<FractionFusionGame> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
+      body: SizedBox(
         width: double.infinity,
         height: double.infinity,
         child: Stack(
@@ -229,7 +231,7 @@ class _FractionFusionGameState extends State<FractionFusionGame> {
                   ),
                 ),
               );
-            }).toList(),
+            }),
 
             // Game over overlay
             if (_isGameOver)
@@ -288,6 +290,8 @@ class FractionPiece {
 
 // Add this to your game mode selector
 class FractionFusionMode extends StatelessWidget {
+  const FractionFusionMode({super.key});
+
   @override
   Widget build(BuildContext context) {
     return FractionFusionGame();

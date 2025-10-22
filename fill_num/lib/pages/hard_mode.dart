@@ -1,11 +1,11 @@
-import 'package:fill_num/components/getmorecoin_dialog.dart';
+import 'package:fill_num/components/getmore_hint_dialog.dart';
 import 'package:fill_num/constants/hard_levels.dart';
 import 'package:fill_num/utils/audio_manager.dart';
-import 'package:fill_num/utils/coin_service.dart';
+import 'package:fill_num/utils/hint_service.dart';
 import 'package:flutter/material.dart';
 import 'package:fraction/fraction.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math' as math;
 
 class HardMode extends StatefulWidget {
@@ -17,14 +17,14 @@ class HardMode extends StatefulWidget {
 
 class _HardModeState extends State<HardMode> {
   static const String _unlockedLevelsKey = 'unlocked_hardcore_levels';
-  static const int _hintCost = 20;
+  static const int _hintCost = 2; // Reduced cost for hints
 
   late Fraction _currentValue;
   late Fraction _targetValue;
   late int _movesLeft;
   late List<Operation> _operations;
   late List<bool> _isUsed;
-  late SharedPreferences _prefs;
+  late Box _gameBox;
   bool _isGameWon = false;
   bool _isGameOver = false;
   int _currentLevelIndex = 0;
@@ -63,26 +63,61 @@ class _HardModeState extends State<HardMode> {
   @override
   void initState() {
     super.initState();
-    _initSharedPreferences();
+    _initHiveAndLoad();
   }
 
-  void _initSharedPreferences() async {
-    _prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _unlockedLevelsCount = _prefs.getInt(_unlockedLevelsKey) ?? 1;
-      if (_unlockedLevelsCount > _levels.length) {
-        _unlockedLevelsCount = _levels.length;
+  Future<void> _initHiveAndLoad() async {
+    try {
+      if (!Hive.isBoxOpen('hard_mode_level')) {
+        await Hive.openBox('hard_mode_level');
       }
-    });
-    if (_unlockedLevelsCount - 1 < _levels.length) {
-      _startGame(levelIndex: _unlockedLevelsCount - 1);
-    } else {
-      _startGame(levelIndex: 0);
+      _gameBox = Hive.box('hard_mode_level');
+      await _loadGameData();
+    } catch (e, st) {
+      debugPrint('Error opening hard_mode_level box: $e\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to initialize game data storage')),
+        );
+      }
+    }
+  }
+
+  Future<void> _loadGameData() async {
+    try {
+      final unlockedLevels = _gameBox.get(_unlockedLevelsKey, defaultValue: 1);
+      setState(() {
+        _unlockedLevelsCount = unlockedLevels;
+        if (_unlockedLevelsCount > _levels.length) {
+          _unlockedLevelsCount = _levels.length;
+        }
+      });
+      if (_unlockedLevelsCount - 1 < _levels.length) {
+        _startGame(levelIndex: _unlockedLevelsCount - 1);
+      } else {
+        _startGame(levelIndex: 0);
+      }
+    } catch (e, st) {
+      debugPrint('Failed to load game data: $e\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load game data')),
+        );
+      }
     }
   }
 
   void _saveProgress() {
-    _prefs.setInt(_unlockedLevelsKey, _unlockedLevelsCount);
+    try {
+      _gameBox.put(_unlockedLevelsKey, _unlockedLevelsCount);
+    } catch (e, st) {
+      debugPrint('Failed to save progress: $e\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save progress')),
+        );
+      }
+    }
   }
 
   void _startGame({int levelIndex = 0}) {
@@ -257,45 +292,48 @@ class _HardModeState extends State<HardMode> {
       return;
     }
 
-    final coinService = Provider.of<CoinService>(context, listen: false);
-    final hasEnoughCoins = await coinService.spendCoins(_hintCost);
-    if (!hasEnoughCoins) {
-      showNotEnoughCoinsDialog(context);
-      return;
-    }
+    final hintService = Provider.of<HintService>(context, listen: false);
+    
+    // Check if user has enough hints
+    if (hintService.hints >= _hintCost) {
+      // Use hint
+      await hintService.useHint();
 
-    int movesMade = _usedTileIndices.length;
-    bool needsReset = false;
-    for (int i = 0; i < movesMade; i++) {
-      if (i >= _solution.length) {
-        needsReset = true;
-        break;
+      int movesMade = _usedTileIndices.length;
+      bool needsReset = false;
+      for (int i = 0; i < movesMade; i++) {
+        if (i >= _solution.length) {
+          needsReset = true;
+          break;
+        }
+        final userOp = _operations[_usedTileIndices[i]];
+        final solOp = _solution[i];
+        if (userOp.type != solOp.type || userOp.value != solOp.value) {
+          needsReset = true;
+          break;
+        }
       }
-      final userOp = _operations[_usedTileIndices[i]];
-      final solOp = _solution[i];
-      if (userOp.type != solOp.type || userOp.value != solOp.value) {
-        needsReset = true;
-        break;
-      }
-    }
 
-    if (needsReset) {
-      _startGame(levelIndex: _currentLevelIndex);
-      await Future.delayed(const Duration(milliseconds: 300));
+      if (needsReset) {
+        _startGame(levelIndex: _currentLevelIndex);
+        await Future.delayed(const Duration(milliseconds: 300));
+        setState(() {
+          _hintTileIndex = _findNextHintIndex(0);
+        });
+        return;
+      }
+
+      int nextHintStep = movesMade;
+      int nextHintIndex = _findNextHintIndex(nextHintStep);
+
       setState(() {
-        _hintTileIndex = _findNextHintIndex(0);
+        if (nextHintIndex != -1) {
+          _hintTileIndex = nextHintIndex;
+        }
       });
-      return;
+    } else {
+       showNotEnoughHintsDialog(context);
     }
-
-    int nextHintStep = movesMade;
-    int nextHintIndex = _findNextHintIndex(nextHintStep);
-
-    setState(() {
-      if (nextHintIndex != -1) {
-        _hintTileIndex = nextHintIndex;
-      }
-    });
   }
 
   int _findNextHintIndex(int step) {
@@ -370,7 +408,7 @@ class _HardModeState extends State<HardMode> {
             });
           },
         ),
-        actions: [_buildCoinDisplay()],
+        actions: [_buildHintDisplay()],
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -783,9 +821,9 @@ class _HardModeState extends State<HardMode> {
                     Icons.lightbulb_outline_rounded,
                     size: 20,
                   ),
-                  label: const Text(
-                    'Hint (20)',
-                    style: TextStyle(
+                  label: Text(
+                    'Hint ($_hintCost)',
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -920,9 +958,9 @@ class _HardModeState extends State<HardMode> {
     );
   }
 
-  Widget _buildCoinDisplay() {
-    return Consumer<CoinService>(
-      builder: (context, coinService, child) {
+  Widget _buildHintDisplay() {
+    return Consumer<HintService>(
+      builder: (context, hintService, child) {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           margin: const EdgeInsets.only(right: 8),
@@ -944,13 +982,13 @@ class _HardModeState extends State<HardMode> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.monetization_on_rounded, 
+              const Icon(Icons.lightbulb_outline_rounded, 
                 color: Colors.white, 
                 size: 18,
               ),
               const SizedBox(width: 6),
               Text(
-                coinService.coins.toString(),
+                hintService.hints.toString(),
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,

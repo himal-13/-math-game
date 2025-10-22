@@ -1,14 +1,14 @@
 import 'package:fill_num/pages/coin_page.dart';
-import 'package:fill_num/utils/coin_service.dart';
+import 'package:fill_num/utils/hint_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-class CoinDisplay extends StatelessWidget {
+class HintDisplay extends StatelessWidget {
   final bool showAddButton;
   final double iconSize;
   final double fontSize;
 
-  const CoinDisplay({
+  const HintDisplay({
     super.key,
     this.showAddButton = true,
     this.iconSize = 20,
@@ -17,8 +17,8 @@ class CoinDisplay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<CoinService>(
-      builder: (context, coinService, child) {
+    return Consumer<HintService>(
+      builder: (context, hintService, child) {
         return GestureDetector(
           onTap: () => Navigator.push(
             context,
@@ -42,13 +42,13 @@ class CoinDisplay extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  Icons.monetization_on,
+                  Icons.lightbulb_outline,
                   color: Colors.yellow,
                   size: iconSize,
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  '${coinService.coins}',
+                  '${hintService.hints}',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,

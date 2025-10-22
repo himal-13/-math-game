@@ -1,10 +1,10 @@
-import 'package:fill_num/components/getmorecoin_dialog.dart';
+import 'package:fill_num/components/getmore_hint_dialog.dart';
 import 'package:fill_num/constants/medium_levels.dart';
 import 'package:fill_num/pages/coin_page.dart';
-import 'package:fill_num/utils/coin_service.dart';
+import 'package:fill_num/utils/hint_service.dart';
 import 'package:flutter/material.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class MediumMode extends StatefulWidget {
   const MediumMode({super.key});
@@ -15,7 +15,7 @@ class MediumMode extends StatefulWidget {
 
 class _MediumModeState extends State<MediumMode> {
   static const String _unlockedLevelsKey = 'unlocked_levels_medium';
-  static const int _hintCost = 20;
+  static const int _hintCost = 1; // Reduced cost for hints
 
   final List<Map<String, dynamic>> _levels = mediumLevels;
   int _currentNumber = 0;
@@ -24,31 +24,66 @@ class _MediumModeState extends State<MediumMode> {
   int _currentLevelIndex = 0;
   int _unlockedLevelsCount = 1;
   List<String> _gridTiles = [];
-  List<int> _usedTileIndices = [];
+  final List<int> _usedTileIndices = [];
   String? _message;
   bool _isGameOver = false;
   bool _hasWon = false;
   bool _showLevelSelect = false;
   int _hintTileIndex = -1;
 
-  SharedPreferences? _prefs;
+  late Box _gameBox;
 
   @override
   void initState() {
     super.initState();
-    _initSharedPreferences();
+    _initHiveAndLoad();
   }
 
-  void _initSharedPreferences() async {
-    _prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _unlockedLevelsCount = _prefs!.getInt(_unlockedLevelsKey) ?? 1;
-    });
-    _startGame(levelIndex: _unlockedLevelsCount - 1);
+  Future<void> _initHiveAndLoad() async {
+    try {
+      if (!Hive.isBoxOpen('medium_mode_level')) {
+        await Hive.openBox('medium_mode_level');
+      }
+      _gameBox = Hive.box('medium_mode_level');
+      await _loadGameData();
+    } catch (e, st) {
+      debugPrint('Error opening medium_mode_level box: $e\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to initialize game data storage')),
+        );
+      }
+    }
+  }
+
+  Future<void> _loadGameData() async {
+    try {
+      final unlockedLevels = _gameBox.get(_unlockedLevelsKey, defaultValue: 1);
+      setState(() {
+        _unlockedLevelsCount = unlockedLevels;
+      });
+      _startGame(levelIndex: _unlockedLevelsCount - 1);
+    } catch (e, st) {
+      debugPrint('Failed to load game data: $e\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load game data')),
+        );
+      }
+    }
   }
 
   void _saveUnlockedLevels() {
-    _prefs?.setInt(_unlockedLevelsKey, _unlockedLevelsCount);
+    try {
+      _gameBox.put(_unlockedLevelsKey, _unlockedLevelsCount);
+    } catch (e, st) {
+      debugPrint('Failed to save unlocked levels: $e\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save progress')),
+        );
+      }
+    }
   }
 
   void _startGame({int levelIndex = 0}) {
@@ -94,10 +129,13 @@ class _MediumModeState extends State<MediumMode> {
       return;
     }
 
-    final coinService = Provider.of<CoinService>(context, listen: false);
-    final hasEnoughCoins = await coinService.spendCoins(_hintCost);
-
-    if (hasEnoughCoins) {
+    final hintService = Provider.of<HintService>(context, listen: false);
+    
+    // Check if user has enough hints
+    if (hintService.hints >= _hintCost) {
+      // Use hint
+      await hintService.useHint();
+      
       if (!_checkIfOnSolutionPath()) {
         setState(() {
           final levelData = _levels[_currentLevelIndex];
@@ -113,7 +151,7 @@ class _MediumModeState extends State<MediumMode> {
       }
       _getHint();
     } else {
-      showNotEnoughCoinsDialog(context);
+       showNotEnoughHintsDialog(context);
     }
   }
 
@@ -319,7 +357,7 @@ class _MediumModeState extends State<MediumMode> {
                 },
               ),
         actions: [
-          _showLevelSelect ? const SizedBox.shrink() : _buildCoinDisplay(),
+          _showLevelSelect ? const SizedBox.shrink() : _buildHintDisplay(),
         ],
       ),
       body: Container(
@@ -342,9 +380,9 @@ class _MediumModeState extends State<MediumMode> {
     );
   }
 
-  Widget _buildCoinDisplay() {
-    return Consumer<CoinService>(
-      builder: (context, coinService, child) {
+  Widget _buildHintDisplay() {
+    return Consumer<HintService>(
+      builder: (context, hintService, child) {
         return GestureDetector(
           onTap: () => Navigator.push(
             context,
@@ -362,13 +400,13 @@ class _MediumModeState extends State<MediumMode> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(
-                  Icons.monetization_on,
+                  Icons.lightbulb_outline,
                   color: Colors.yellow,
                   size: 18,
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  '${coinService.coins}',
+                  '${hintService.hints}',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -522,7 +560,7 @@ class _MediumModeState extends State<MediumMode> {
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
-                          Icons.monetization_on,
+                          Icons.lightbulb_outline,
                           size: 14,
                           color: Colors.black,
                         ),
@@ -534,7 +572,7 @@ class _MediumModeState extends State<MediumMode> {
               const SizedBox(height: 4),
               Text(
                 'Hint ($_hintCost)',
-                style: TextStyle(color: Colors.white, fontSize: 12),
+                style: const TextStyle(color: Colors.white, fontSize: 12),
               ),
             ],
           ),

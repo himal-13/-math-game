@@ -4,7 +4,7 @@ import 'package:fill_num/pages/easy_mode.dart';
 import 'package:fill_num/pages/expert_mode.dart';
 import 'package:fill_num/pages/medium_mode.dart';
 import 'package:fill_num/pages/hard_mode.dart';
-import 'package:fill_num/utils/coin_service.dart';
+import 'package:fill_num/utils/hint_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -258,7 +258,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildCoinDisplay() {
-    return Consumer<CoinService>(
+    return Consumer<HintService>(
       builder: (context, coinService, child) {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -275,7 +275,7 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(width: 6),
               Text(
-                '${coinService.coins}',
+                '${coinService.hints}',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
