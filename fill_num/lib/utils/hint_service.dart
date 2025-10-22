@@ -1,62 +1,53 @@
 import 'package:flutter/foundation.dart';
-import 'package:hive_ce_flutter/hive_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HintService extends ChangeNotifier {
-  static const String _hintsBoxName = 'hints_countbox';
-  static const String _hintsKey = 'hints';
-  
-  late Box<int> _hintsBox;
-  bool _isInitialized = false;
+  static const String _hintKey = 'user_hints';
+  int _hints = 0;
+  SharedPreferences? _prefs;
 
-  int get hints {
-    if (!_isInitialized) {
-      return 5; // Default value before initialization
-    }
-    return _hintsBox.get(_hintsKey, defaultValue: 5) ?? 5;
+  int get hints => _hints;
+
+  HintService() {
+    _loadHints();
   }
-  
-  Future<void> init() async {
-    try {
-      _hintsBox = await Hive.openBox<int>(_hintsBoxName);
-      _isInitialized = true;
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error initializing HintService: $e');
-      _isInitialized = false;
-    }
-  }
-  
-  Future<void> addHints(int amount) async {
-    if (!_isInitialized) {
-      await init();
-    }
-    final currentHints = hints;
-    await _hintsBox.put(_hintsKey, currentHints + amount);
+
+  Future<void> _loadHints() async {
+    _prefs = await SharedPreferences.getInstance();
+    _hints = _prefs?.getInt(_hintKey) ?? 5; // Start with 5 hints by default
     notifyListeners();
   }
-  
-  Future<void> useHint() async {
-    if (!_isInitialized) {
-      await init();
-    }
-    if (hints > 0) {
-      await _hintsBox.put(_hintsKey, hints - 1);
-      notifyListeners();
-    }
+
+  Future<bool> addHints(int amount) async {
+    if (amount <= 0) return false;
+    
+    _hints += amount;
+    await _saveHints();
+    notifyListeners();
+    return true;
   }
-  
-  Future<void> resetHints() async {
-    if (!_isInitialized) {
-      await init();
-    }
-    await _hintsBox.put(_hintsKey, 5);
+
+  Future<bool> useHint() async {
+    if (_hints <= 0) return false;
+    
+    _hints -= 1;
+    await _saveHints();
+    notifyListeners();
+    return true;
+  }
+
+  Future<void> resetHints([int defaultAmount = 5]) async {
+    _hints = defaultAmount;
+    await _saveHints();
     notifyListeners();
   }
-  
-  Future<void> close() async {
-    if (_isInitialized) {
-      await _hintsBox.close();
-      _isInitialized = false;
-    }
+
+  Future<void> _saveHints() async {
+    await _prefs?.setInt(_hintKey, _hints);
+  }
+
+  // Check if user has enough hints
+  bool hasEnoughHints(int amount) {
+    return _hints >= amount;
   }
 }

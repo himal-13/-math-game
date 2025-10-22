@@ -39,56 +39,6 @@ class HardcoreLevel {
 final List<HardcoreLevel> hardcoreLevels = [
   // Level 1: Introduction 
 
-  //level 1-5 easy operations 3x3 grid with some fractions, and regular numbers
-    HardcoreLevel(
-    current: Fraction(2, 5),
-    target: Fraction(1, 2),
-    moves: 2,
-    rows: 3,
-    cols: 3,
-    operations: [
-      Operation(type: '+', value: Fraction(1, 1)),
-      Operation(type: '+', value: Fraction(2, 5)),
-      Operation(type: '*', value: Fraction(2, 1)),
-      Operation(type: '/', value: Fraction(2, 1)),
-      Operation(type: '^2', value: Fraction(1, 1)),
-      Operation(type: '+%', value: Fraction(10, 100)),
-      Operation(type: '-%', value: Fraction(10, 100)),
-      Operation(type: '*', value: Fraction(1, 2)),
-      Operation(type: '/', value: Fraction(2, 1)),
-    ],
-    solution: [
-      Operation(type: '+', value: Fraction(3, 5)),
-      Operation(type: '*', value: Fraction(1, 2)),
-    ],
-  ),
-
-    HardcoreLevel(
-    current: Fraction(2, 5),
-    target: Fraction(1, 2),
-    moves: 2,
-    rows: 3,
-    cols: 3,
-    operations: [
-      Operation(type: '+', value: Fraction(1, 1)),
-      Operation(type: '+', value: Fraction(3, 5)),
-      Operation(type: '*', value: Fraction(2, 1)),
-      Operation(type: '/', value: Fraction(2, 1)),
-      Operation(type: '^2', value: Fraction(1, 1)),
-      Operation(type: '+%', value: Fraction(10, 100)),
-      Operation(type: '-%', value: Fraction(10, 100)),
-      Operation(type: '*', value: Fraction(1, 2)),
-      Operation(type: '/', value: Fraction(2, 1)),
-    ],
-    solution: [
-      Operation(type: '+', value: Fraction(3, 5)),
-      Operation(type: '*', value: Fraction(1, 2)),
-    ],
-  ),
-
-
-
-
   HardcoreLevel(
     current: Fraction(2, 5),
     target: Fraction(1, 2),

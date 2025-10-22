@@ -123,53 +123,82 @@ class _EasyModeState extends State<EasyMode> {
     return true;
   }
 
- void _purchaseHint() async {
-  // Check if a hint is already active.
-  if (_hintTileIndex != -1) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('A hint is already showing.')),
-    );
-    return;
-  }
-
-  final hintService = Provider.of<HintService>(context, listen: false);
-  
-  // Check if user has enough hints
-  if (hintService.hints >= _hintCost) {
-    // Use hint
-    await hintService.useHint();
-    
-    // Check if the current moves are on the correct solution path.
-    if (!_checkIfOnSolutionPath()) {
-      // If not, reset the game state to the beginning.
-      setState(() {
-        final levelData = _levels[_currentLevelIndex];
-        _currentNumber = levelData['start']!;
-        _movesRemaining = levelData['moves']!;
-        _usedTileIndices.clear();
-      });
+  void _purchaseHint() async {
+    // Check if a hint is already active.
+    if (_hintTileIndex != -1) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Wrong path! The board has been reset.'),
-        ),
+        const SnackBar(content: Text('A hint is already showing.')),
       );
-    }
-    _getHint();
-  } else {
-    showNotEnoughHintsDialog(context);
-  }
-
-}  void _getHint() {
-    if (_usedTileIndices.length >= _levels[_currentLevelIndex]['sol']!.length) {
       return;
     }
+
+    final hintService = Provider.of<HintService>(context, listen: false);
+
+    // Check if user has enough hints
+    if (hintService.hints >= _hintCost) {
+      bool shouldReset = false;
+
+      // Check if the current moves are on the correct solution path.
+      if (!_checkIfOnSolutionPath()) {
+        // If not, reset the game state to the beginning.
+        setState(() {
+          final levelData = _levels[_currentLevelIndex];
+          _currentNumber = levelData['start']!;
+          _movesRemaining = levelData['moves']!;
+          _usedTileIndices.clear();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Wrong path! The board has been reset.'),
+          ),
+        );
+        shouldReset = true;
+      }
+
+      // Use hint and get the next correct move
+      await hintService.useHint();
+
+      // Only show hint if we didn't just reset or if we're at the beginning
+      if (!shouldReset || _usedTileIndices.isEmpty) {
+        _getHint();
+      }
+    } else {
+      // Show dialog when not enough hints
+      showNotEnoughHintsDialog(context);
+    }
+  }
+
+  void _getHint() {
+    if (_usedTileIndices.length >= _levels[_currentLevelIndex]['sol']!.length) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No more hints available for this level.'),
+        ),
+      );
+      return;
+    }
+
     final hintSolution =
         _levels[_currentLevelIndex]['sol']![_usedTileIndices.length] as String;
-    final int hintIndex = _gridTiles.indexOf(hintSolution);
 
-    setState(() {
-      _hintTileIndex = hintIndex;
-    });
+    // Find the index of the hint solution in the grid tiles
+    int hintIndex = -1;
+    for (int i = 0; i < _gridTiles.length; i++) {
+      if (_gridTiles[i] == hintSolution && !_usedTileIndices.contains(i)) {
+        hintIndex = i;
+        break;
+      }
+    }
+
+    if (hintIndex != -1) {
+      setState(() {
+        _hintTileIndex = hintIndex;
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not find hint tile.')),
+      );
+    }
   }
 
   void _resetGame() {
@@ -195,6 +224,7 @@ class _EasyModeState extends State<EasyMode> {
         break;
       case 'x':
         nextNumber *= value;
+        break; // ADD THIS BREAK STATEMENT
       case '÷':
         if (value != 0 && nextNumber % value == 0) {
           nextNumber ~/= value;
@@ -219,11 +249,14 @@ class _EasyModeState extends State<EasyMode> {
       _hasWon = (_currentNumber == _targetNumber);
 
       if (_hasWon) {
-        // AudioManager.playDing();
         _message = 'Level ${_currentLevelIndex + 1} Complete!';
         _isGameOver = true;
+        // Unlock next level if applicable
+        if (_currentLevelIndex + 1 >= _unlockedLevelsCount) {
+          _unlockedLevelsCount = _currentLevelIndex + 2;
+          _saveUnlockedLevels();
+        }
       } else if (_movesRemaining == 0) {
-        // AudioManager.playGameOver();
         _message = 'Out of moves! Game Over.';
         _isGameOver = true;
       }
