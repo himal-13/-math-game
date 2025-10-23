@@ -24,7 +24,7 @@ class _EasyModeState extends State<EasyMode> {
   int _currentLevelIndex = 99;
   int _unlockedLevelsCount = 1;
   List<String> _gridTiles = [];
-  List<int> _usedTileIndices = [];
+  final List<int> _usedTileIndices = [];
   String? _message;
   bool _isGameOver = false;
   bool _hasWon = false;

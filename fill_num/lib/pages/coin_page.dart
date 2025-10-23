@@ -1,5 +1,6 @@
 import 'package:fill_num/utils/hint_service.dart';
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 
 class CoinPage extends StatefulWidget {
@@ -18,6 +19,129 @@ class _CoinPageState extends State<CoinPage> {
     {'hints': 125, 'price': '\$19.99', 'bonus': 50, 'color': Colors.red},
     {'hints': 250, 'price': '\$34.99', 'bonus': 125, 'color': Colors.amber},
   ];
+
+  RewardedAd? _rewardedAd;
+  bool _isAdLoading = false;
+  bool _isAdLoaded = false;
+
+  // Test Ad Unit ID - Replace with your actual Ad Unit ID for production
+  static const String _testRewardedAdUnitId = 'ca-app-pub-3940256099942544/5224354917';
+  //ios ca-app-pub-1993397054354769/4099969678 android ca-app-pub-1993397054354769/1320982844
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRewardedAd();
+  }
+
+  void _loadRewardedAd() {
+    setState(() {
+      _isAdLoading = true;
+      _isAdLoaded = false;
+    });
+
+    RewardedAd.load(
+      adUnitId: _testRewardedAdUnitId,
+      request: const AdRequest(),
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+        onAdLoaded: (RewardedAd ad) {
+          setState(() {
+            _rewardedAd = ad;
+            _isAdLoading = false;
+            _isAdLoaded = true;
+          });
+
+          // Set up full screen content callbacks
+          _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
+            onAdShowedFullScreenContent: (RewardedAd ad) =>
+                debugPrint('$ad onAdShowedFullScreenContent.'),
+            onAdDismissedFullScreenContent: (RewardedAd ad) {
+              ad.dispose();
+              _loadRewardedAd(); // Load a new ad after this one is dismissed
+            },
+            onAdFailedToShowFullScreenContent: (RewardedAd ad, AdError error) {
+              ad.dispose();
+              _loadRewardedAd(); // Load a new ad after failure
+            },
+          );
+        },
+        onAdFailedToLoad: (LoadAdError error) {
+          setState(() {
+            _isAdLoading = false;
+            _isAdLoaded = false;
+          });
+          // Optionally retry loading after a delay
+          Future.delayed(const Duration(seconds: 5), _loadRewardedAd);
+        },
+      ),
+    );
+  }
+
+  void _showRewardedAd() {
+    if (_rewardedAd != null && _isAdLoaded) {
+      _rewardedAd!.show(
+        onUserEarnedReward: (AdWithoutView ad, RewardItem reward) {
+          
+          // Add hints when user completes the ad
+          final hintService = Provider.of<HintService>(context, listen: false);
+          hintService.addHints(2);
+          
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('+2 hints added! Thanks for watching!'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        },
+      );
+    } else {
+      // If ad is not ready, show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ad is not ready yet. Please try again in a moment.'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      
+      // Try to load the ad again
+      _loadRewardedAd();
+    }
+  }
+
+  void _watchAdForHints() {
+    if (_isAdLoading) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ad is loading. Please wait...'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (_isAdLoaded) {
+      _showRewardedAd();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ad not available. Please try again.'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _loadRewardedAd();
+    }
+  }
+
+  @override
+  void dispose() {
+    _rewardedAd?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -116,10 +240,76 @@ class _CoinPageState extends State<CoinPage> {
                   ),
                 ],
               ),
+              // Ad status indicator
+              const SizedBox(height: 8),
+              _buildAdStatusIndicator(),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildAdStatusIndicator() {
+    Widget statusWidget;
+    
+    if (_isAdLoading) {
+      statusWidget = Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.yellow),
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            'Loading ad...',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      );
+    } else if (_isAdLoaded) {
+      statusWidget = Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.check_circle, color: Colors.green, size: 12),
+          const SizedBox(width: 8),
+          const Text(
+            'Ad ready to watch',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      );
+    } else {
+      statusWidget = Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline, color: Colors.red, size: 12),
+          const SizedBox(width: 8),
+          const Text(
+            'Ad not available',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      );
+    }
+    
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: statusWidget,
     );
   }
 
@@ -155,8 +345,8 @@ class _CoinPageState extends State<CoinPage> {
                   title: 'Watch Ad',
                   hints: 2,
                   icon: Icons.play_arrow,
-                  color: Colors.blue,
-                  onTap: _watchAdForHints,
+                  color: _isAdLoaded ? Colors.blue : Colors.grey,
+                  onTap: _isAdLoaded ? _watchAdForHints : null,
                 ),
               ),
               const SizedBox(width: 10),
@@ -181,7 +371,7 @@ class _CoinPageState extends State<CoinPage> {
     required int hints,
     required IconData icon,
     required Color color,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
   }) {
     return ElevatedButton(
       onPressed: onTap,
@@ -201,7 +391,10 @@ class _CoinPageState extends State<CoinPage> {
           const SizedBox(height: 4),
           Text(
             title,
-            style: const TextStyle(fontSize: 12, color: Colors.white),
+            style: TextStyle(
+              fontSize: 12, 
+              color: onTap != null ? Colors.white : Colors.white54,
+            ),
           ),
           const SizedBox(height: 2),
           Row(
@@ -349,40 +542,6 @@ class _CoinPageState extends State<CoinPage> {
     );
   }
 
-  void _watchAdForHints() async {
-    // Show loading
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const AlertDialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        content: Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.yellow),
-          ),
-        ),
-      ),
-    );
-
-    // Simulate ad loading and reward
-    await Future.delayed(const Duration(seconds: 2));
-
-    Navigator.pop(context); // Remove loading dialog
-
-    final hintService = Provider.of<HintService>(context, listen: false);
-    await hintService.addHints(2);
-
-    // Show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('+2 hints added! Thanks for watching!'),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
   void _claimDailyBonus() async {
     final hintService = Provider.of<HintService>(context, listen: false);
     await hintService.addHints(5);
@@ -397,7 +556,6 @@ class _CoinPageState extends State<CoinPage> {
   }
 
   void _purchaseHints(Map<String, dynamic> package) {
-    // In a real app, this would integrate with your payment system
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -413,7 +571,6 @@ class _CoinPageState extends State<CoinPage> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              // In a real app, you would process payment here
               final hintService = Provider.of<HintService>(context, listen: false);
               hintService.addHints(package['hints'] + package['bonus']);
               

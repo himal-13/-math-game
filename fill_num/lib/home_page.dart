@@ -269,7 +269,7 @@ class _HomePageState extends State<HomePage> {
           child: Row(
             children: [
               Icon(
-                Icons.monetization_on,
+                Icons.lightbulb_outline,
                 color: Colors.yellow.shade600,
                 size: 20,
               ),
