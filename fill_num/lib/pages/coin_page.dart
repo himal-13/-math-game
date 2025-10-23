@@ -2,6 +2,7 @@ import 'package:fill_num/utils/hint_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CoinPage extends StatefulWidget {
   const CoinPage({super.key});
@@ -11,27 +12,59 @@ class CoinPage extends StatefulWidget {
 }
 
 class _CoinPageState extends State<CoinPage> {
-  final List<Map<String, dynamic>> _hintPackages = [
-    {'hints': 5, 'price': '\$0.99', 'bonus': 0, 'color': Colors.blue},
-    {'hints': 15, 'price': '\$2.99', 'bonus': 3, 'color': Colors.green},
-    {'hints': 25, 'price': '\$4.99', 'bonus': 5, 'color': Colors.orange},
-    {'hints': 50, 'price': '\$8.99', 'bonus': 15, 'color': Colors.purple},
-    {'hints': 125, 'price': '\$19.99', 'bonus': 50, 'color': Colors.red},
-    {'hints': 250, 'price': '\$34.99', 'bonus': 125, 'color': Colors.amber},
-  ];
-
   RewardedAd? _rewardedAd;
   bool _isAdLoading = false;
   bool _isAdLoaded = false;
+  int _dailyClaimsLeft = 2;
+  DateTime? _lastClaimDate;
+  int _claimsToday = 0;
 
   // Test Ad Unit ID - Replace with your actual Ad Unit ID for production
   static const String _testRewardedAdUnitId = 'ca-app-pub-3940256099942544/5224354917';
-  //ios ca-app-pub-1993397054354769/4099969678 android ca-app-pub-1993397054354769/1320982844
 
   @override
   void initState() {
     super.initState();
     _loadRewardedAd();
+    _checkDailyClaimsStatus();
+  }
+
+  void _checkDailyClaimsStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastClaimTimestamp = prefs.getInt('lastDailyClaimDate');
+    final savedClaimsToday = prefs.getInt('claimsToday') ?? 0;
+    
+    if (lastClaimTimestamp != null) {
+      final lastClaimDate = DateTime.fromMillisecondsSinceEpoch(lastClaimTimestamp);
+      final now = DateTime.now();
+      
+      // Check if the last claim was today
+      final isSameDay = lastClaimDate.year == now.year &&
+          lastClaimDate.month == now.month &&
+          lastClaimDate.day == now.day;
+      
+      if (isSameDay) {
+        setState(() {
+          _lastClaimDate = lastClaimDate;
+          _claimsToday = savedClaimsToday;
+          _dailyClaimsLeft = (2 - savedClaimsToday).clamp(0, 2);
+        });
+      } else {
+        // New day, reset claims
+        setState(() {
+          _lastClaimDate = null;
+          _claimsToday = 0;
+          _dailyClaimsLeft = 2;
+        });
+        await prefs.remove('claimsToday');
+        await prefs.remove('lastDailyClaimDate');
+      }
+    } else {
+      setState(() {
+        _claimsToday = 0;
+        _dailyClaimsLeft = 2;
+      });
+    }
   }
 
   void _loadRewardedAd() {
@@ -81,10 +114,12 @@ class _CoinPageState extends State<CoinPage> {
     if (_rewardedAd != null && _isAdLoaded) {
       _rewardedAd!.show(
         onUserEarnedReward: (AdWithoutView ad, RewardItem reward) {
-          
           // Add hints when user completes the ad
           final hintService = Provider.of<HintService>(context, listen: false);
           hintService.addHints(2);
+          
+          // Update daily claims
+          _updateDailyClaims();
           
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
@@ -112,6 +147,17 @@ class _CoinPageState extends State<CoinPage> {
   }
 
   void _watchAdForHints() {
+    if (_dailyClaimsLeft <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Daily limit reached! Come back tomorrow.'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     if (_isAdLoading) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -134,6 +180,33 @@ class _CoinPageState extends State<CoinPage> {
         ),
       );
       _loadRewardedAd();
+    }
+  }
+
+  void _updateDailyClaims() async {
+    final prefs = await SharedPreferences.getInstance();
+    final now = DateTime.now();
+    
+    setState(() {
+      _claimsToday++;
+      _dailyClaimsLeft = (2 - _claimsToday).clamp(0, 2);
+    });
+
+    await prefs.setInt('claimsToday', _claimsToday);
+    await prefs.setInt('lastDailyClaimDate', now.millisecondsSinceEpoch);
+  }
+
+  String _getNextAvailableTime() {
+    if (_lastClaimDate == null) return 'Now';
+    
+    final now = DateTime.now();
+    final tomorrow = DateTime(_lastClaimDate!.year, _lastClaimDate!.month, _lastClaimDate!.day + 1);
+    final difference = tomorrow.difference(now);
+    
+    if (difference.inHours > 0) {
+      return '${difference.inHours}h ${difference.inMinutes.remainder(60)}m';
+    } else {
+      return '${difference.inMinutes}m';
     }
   }
 
@@ -179,9 +252,7 @@ class _CoinPageState extends State<CoinPage> {
                 const SizedBox(height: 20),
                 _buildFreeHintsSection(),
                 const SizedBox(height: 20),
-                Expanded(
-                  child: _buildHintPackages(),
-                ),
+                _buildDailyLimitIndicator(),
               ],
             ),
           ),
@@ -314,52 +385,48 @@ class _CoinPageState extends State<CoinPage> {
   }
 
   Widget _buildFreeHintsSection() {
+    final canClaimMore = _dailyClaimsLeft > 0;
+    
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.green),
+        border: Border.all(color: canClaimMore ? Colors.green : Colors.grey),
       ),
       child: Column(
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.card_giftcard, color: Colors.green, size: 20),
-              SizedBox(width: 8),
+              Icon(Icons.card_giftcard, color: canClaimMore ? Colors.green : Colors.grey, size: 20),
+              const SizedBox(width: 8),
               Text(
                 'Free Hints',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: canClaimMore ? Colors.white : Colors.white54,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              const Spacer(),
+              if (!canClaimMore)
+                Text(
+                  'Limit reached',
+                  style: TextStyle(
+                    color: Colors.orange,
+                    fontSize: 12,
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildFreeHintButton(
-                  title: 'Watch Ad',
-                  hints: 2,
-                  icon: Icons.play_arrow,
-                  color: _isAdLoaded ? Colors.blue : Colors.grey,
-                  onTap: _isAdLoaded ? _watchAdForHints : null,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildFreeHintButton(
-                  title: 'Daily Bonus',
-                  hints: 5,
-                  icon: Icons.calendar_today,
-                  color: Colors.orange,
-                  onTap: _claimDailyBonus,
-                ),
-              ),
-            ],
+          _buildFreeHintButton(
+            title: canClaimMore ? 'Watch Ad for 2 Hints' : 'Daily Limit Reached',
+            hints: 2,
+            icon: canClaimMore ? Icons.play_arrow : Icons.lock,
+            color: canClaimMore && _isAdLoaded ? Colors.blue : Colors.grey,
+            onTap: canClaimMore ? _watchAdForHints : null,
+            subtitle: canClaimMore ? '$_dailyClaimsLeft left today' : 'Come back tomorrow',
           ),
         ],
       ),
@@ -372,13 +439,14 @@ class _CoinPageState extends State<CoinPage> {
     required IconData icon,
     required Color color,
     required VoidCallback? onTap,
+    String? subtitle,
   }) {
     return ElevatedButton(
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
         backgroundColor: color.withOpacity(0.2),
         foregroundColor: color,
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: BorderSide(color: color),
@@ -387,25 +455,37 @@ class _CoinPageState extends State<CoinPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 24),
-          const SizedBox(height: 4),
+          Icon(icon, size: 32),
+          const SizedBox(height: 8),
           Text(
             title,
+            textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 12, 
+              fontSize: 14, 
+              fontWeight: FontWeight.bold,
               color: onTap != null ? Colors.white : Colors.white54,
             ),
           ),
-          const SizedBox(height: 2),
+          if (subtitle != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white54,
+              ),
+            ),
+          ],
+          const SizedBox(height: 4),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.lightbulb_outline, size: 14, color: Colors.yellow),
-              const SizedBox(width: 2),
+              const Icon(Icons.lightbulb_outline, size: 16, color: Colors.yellow),
+              const SizedBox(width: 4),
               Text(
                 '+$hints',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: Colors.yellow,
                 ),
@@ -417,171 +497,43 @@ class _CoinPageState extends State<CoinPage> {
     );
   }
 
-  Widget _buildHintPackages() {
-    return Column(
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: 16.0),
-          child: Text(
-            'Hint Packages',
+  Widget _buildDailyLimitIndicator() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Daily claims:',
             style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              color: Colors.white70,
+              fontSize: 14,
             ),
           ),
-        ),
-        Expanded(
-          child: GridView.builder(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 0.8,
-            ),
-            itemCount: _hintPackages.length,
-            itemBuilder: (context, index) {
-              final package = _hintPackages[index];
-              return _buildHintPackageCard(package);
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHintPackageCard(Map<String, dynamic> package) {
-    final totalHints = package['hints'] + package['bonus'];
-    
-    return GestureDetector(
-      onTap: () => _purchaseHints(package),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              package['color'] as Color,
-              package['color'].withOpacity(0.7) as Color,
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-              color: (package['color'] as Color).withOpacity(0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            Positioned(
-              top: 10,
-              right: 10,
-              child: package['bonus'] > 0
-                  ? Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.yellow,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '+${package['bonus']} FREE',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                    )
-                  : const SizedBox(),
-            ),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.lightbulb_outline, color: Colors.yellow, size: 24),
-                    const SizedBox(width: 4),
-                    Text(
-                      totalHints.toString(),
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
+          Row(
+            children: [
+              Text(
+                '$_dailyClaimsLeft/2 remaining',
+                style: TextStyle(
+                  color: _dailyClaimsLeft > 0 ? Colors.green : Colors.orange,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
                 ),
-                const SizedBox(height: 8),
+              ),
+              const SizedBox(width: 8),
+              if (_dailyClaimsLeft <= 0)
                 Text(
-                  package['price'] as String,
+                  'Resets in ${_getNextAvailableTime()}',
                   style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.white70,
-                    fontWeight: FontWeight.bold,
+                    color: Colors.orange,
+                    fontSize: 12,
                   ),
                 ),
-                if (package['bonus'] > 0) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    '${package['hints']} + ${package['bonus']} bonus',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.white60,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _claimDailyBonus() async {
-    final hintService = Provider.of<HintService>(context, listen: false);
-    await hintService.addHints(5);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('+5 hints added! Daily bonus claimed!'),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _purchaseHints(Map<String, dynamic> package) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Purchase Hints'),
-        content: Text(
-          'Purchase ${package['hints']} hints for ${package['price']}?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              final hintService = Provider.of<HintService>(context, listen: false);
-              hintService.addHints(package['hints'] + package['bonus']);
-              
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Purchase successful! ${package['hints'] + package['bonus']} hints added.'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-            child: const Text('Purchase'),
+            ],
           ),
         ],
       ),

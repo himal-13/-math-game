@@ -14,7 +14,7 @@ class HintService extends ChangeNotifier {
 
   Future<void> _loadHints() async {
     _prefs = await SharedPreferences.getInstance();
-    _hints = _prefs?.getInt(_hintKey) ?? 5; // Start with 5 hints by default
+    _hints = _prefs?.getInt(_hintKey) ?? 1; // Start with 5 hints by default
     notifyListeners();
   }
 

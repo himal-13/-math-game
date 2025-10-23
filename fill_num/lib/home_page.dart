@@ -1,12 +1,11 @@
 // pages/home_page.dart
 
+import 'package:fill_num/components/hint_display.dart';
 import 'package:fill_num/pages/easy_mode.dart';
 import 'package:fill_num/pages/expert_mode.dart';
 import 'package:fill_num/pages/medium_mode.dart';
 import 'package:fill_num/pages/hard_mode.dart';
-import 'package:fill_num/utils/hint_service.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -38,19 +37,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _showSettings() {
-    showDialog(
-      context: context,
-      builder: (context) => _buildSettingsDialog(),
-    );
-  }
-
-  void _rateApp() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Redirecting to app store...'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+    showDialog(context: context, builder: (context) => _buildSettingsDialog());
   }
 
   Widget _buildSettingsDialog() {
@@ -71,10 +58,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             const SizedBox(height: 20),
-            _buildSettingOption(
-              icon: Icons.volume_up,
-              title: 'Sound Effects',
-            ),
+            _buildSettingOption(icon: Icons.volume_up, title: 'Sound Effects'),
             _buildSettingOption(
               icon: Icons.music_note,
               title: 'Background Music',
@@ -109,10 +93,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildSettingOption({
-    required IconData icon,
-    required String title,
-  }) {
+  Widget _buildSettingOption({required IconData icon, required String title}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -122,10 +103,7 @@ class _HomePageState extends State<HomePage> {
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-              ),
+              style: const TextStyle(color: Colors.white, fontSize: 16),
             ),
           ),
           Switch(
@@ -144,9 +122,8 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: const Color(0xFF121212),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header
               Row(
@@ -154,200 +131,138 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   IconButton(
                     onPressed: _showSettings,
-                    icon: Icon(
-                      Icons.settings,
-                      color: Colors.grey.shade400,
-                      size: 28,
-                    ),
-                  ),
-                  _buildCoinDisplay(),
-                ],
-              ),
-
-              const SizedBox(height: 40),
-
-              // Title Section
-              Center(
-                child: Column(
-                  children: [
-                   
-                    const SizedBox(height: 8),
-                    Text(
-                      'Math Puzzle Game',
-                      style: TextStyle(
-                        fontSize: 16,
+                    icon: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade800.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.settings,
                         color: Colors.grey.shade400,
+                        size: 22,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                  const HintDisplay(),
+                ],
               ),
 
               const SizedBox(height: 20),
 
-              // Game Modes
+              // Main Content - Compact Grid
               Expanded(
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _buildModeCard(
-                      title: 'Easy Mode',
-                      subtitle: 'Perfect for beginners',
-                      color: Colors.green.shade400,
-                      onTap: _navigateToEasyMode,
-                      icon: Icons.play_arrow,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildModeCard(
-                      title: 'Medium Mode',
-                      subtitle: 'Balance of challenge & fun',
-                      color: Colors.blue.shade400,
-                      onTap: _navigateToMediumMode,
-                      icon: Icons.gamepad,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildModeCard(
-                      title: 'Hard Mode',
-                      subtitle: 'Ultimate brain challenge',
-                      color: Colors.red.shade400,
-                      onTap: _navigateToHardMode,
-                      icon: Icons.psychology,
-                    ),
-                    _buildModeCard(
-                      title: 'Expert Mode',
-                      subtitle: 'Ultimate brain challenge',
-                      color: Colors.red.shade400,
-                      onTap: (){
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => ExtremeGrid()),
-                        );
-                      },
-                      icon: Icons.psychology,
-                    ),
-                  ],
-                ),
-              ),
-
-              // Bottom Buttons
-              Padding(
-                padding: const EdgeInsets.only(top: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildBottomButton(
-                      icon: Icons.help_outline,
-                      label: 'Help',
-                      onTap: () {
-                        // TODO: Add help dialog
-                        _rateApp();
-                      },
-                    ),
-                    _buildBottomButton(
-                      icon: Icons.star_border,
-                      label: 'Rate',
-                      onTap: _rateApp,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCoinDisplay() {
-    return Consumer<HintService>(
-      builder: (context, coinService, child) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade800,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.lightbulb_outline,
-                color: Colors.yellow.shade600,
-                size: 20,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                '${coinService.hints}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildModeCard({
-    required String title,
-    required String subtitle,
-    required Color color,
-    required VoidCallback onTap,
-    required IconData icon,
-  }) {
-    return Card(
-      color: Colors.grey.shade900,
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                    // App Title
                     Text(
-                      title,
+                      'Math Puzzle',
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        color: color,
+                        color: Colors.orange.shade400,
+                        letterSpacing: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 8),
                     Text(
-                      subtitle,
+                      'Choose your challenge',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey.shade400,
                       ),
                     ),
+                    const SizedBox(height: 30),
+
+                    // Compact Mode Grid - 2x2 layout
+                    Expanded(
+                      child: GridView.count(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        childAspectRatio: 0.9,
+                        children: [
+                          _buildCompactModeCard(
+                            title: 'Easy',
+                            subtitle: 'Basic Operations\n(+, -, ×, ÷)',
+                            color: Colors.green.shade400,
+                            icon: Icons.play_arrow,
+                            onTap: _navigateToEasyMode,
+                          ),
+                          _buildCompactModeCard(
+                            title: 'Medium',
+                            subtitle: 'Complex Equations\n& Patterns',
+                            color: Colors.blue.shade400,
+                            icon: Icons.gamepad,
+                            onTap: _navigateToMediumMode,
+                          ),
+                          _buildCompactModeCard(
+                            title: 'Hard',
+                            subtitle: 'Advanced Math\n%, √, ²',
+                            color: Colors.orange.shade400,
+                            icon: Icons.psychology,
+                            onTap: _navigateToHardMode,
+                          ),
+                          _buildCompactModeCard(
+                            title: 'Expert',
+                            subtitle: 'More Advanced\n%, !, ∑',
+                            color: Colors.purple.shade300,
+                            icon: Icons.whatshot,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => ExtremeGrid()),
+                              );
+                            },
+                            isExpert: true,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Bottom Section with Additional Info
+                    // Container(
+                    //   margin: const EdgeInsets.only(top: 20, bottom: 10),
+                    //   padding: const EdgeInsets.all(16),
+                    //   decoration: BoxDecoration(
+                    //     color: Colors.grey.shade900.withOpacity(0.3),
+                    //     borderRadius: BorderRadius.circular(16),
+                    //   ),
+                    //   child: Column(
+                    //     children: [
+                    //       Row(
+                    //         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    //         children: [
+                    //           _buildInfoItem(
+                    //             icon: Icons.grid_view,
+                    //             text: '4 Grid Sizes',
+                    //           ),
+                    //           _buildInfoItem(
+                    //             icon: Icons.psychology,
+                    //             text: 'Progressive Difficulty',
+                    //           ),
+                    //           _buildInfoItem(
+                    //             icon: Icons.timer,
+                    //             text: 'Time Challenges',
+                    //           ),
+                    //         ],
+                    //       ),
+                    //       const SizedBox(height: 12),
+                    //       Text(
+                    //         'Complete puzzles to earn hints and unlock achievements!',
+                    //           textAlign: TextAlign.center,
+                    //         style: TextStyle(
+                    //           fontSize: 12,
+                    //           color: Colors.grey.shade500,
+                    //         ),
+                    //       ),
+                    //     ],
+                    //   ),
+                    // ),
                   ],
                 ),
-              ),
-              Icon(
-                Icons.arrow_forward_ios,
-                color: Colors.grey.shade600,
-                size: 20,
               ),
             ],
           ),
@@ -356,30 +271,126 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildBottomButton({
+  Widget _buildCompactModeCard({
+    required String title,
+    required String subtitle,
+    required Color color,
     required IconData icon,
-    required String label,
     required VoidCallback onTap,
+    bool isExpert = false,
   }) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          onPressed: onTap,
-          icon: Icon(
-            icon,
-            color: Colors.grey.shade400,
-            size: 28,
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                color.withOpacity(0.15),
+                Colors.grey.shade900.withOpacity(0.8),
+              ],
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Icon with background
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: color.withOpacity(0.4), width: 1.5),
+                  ),
+                  child: Icon(icon, color: color, size: 24),
+                ),
+                const SizedBox(height: 8),
+                
+                // Title
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                      ),
+                    ),
+                    if (isExpert) ...[
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade400,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'PRO',
+                          style: TextStyle(
+                            fontSize: 8,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 1),
+                
+                // Subtitle
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade400,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                
+                // Difficulty indicator
+                const SizedBox(height: 8),
+                Container(
+                  height: 3,
+                  width: 30,
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.grey.shade400,
-            fontSize: 12,
-          ),
-        ),
-      ],
+      ),
     );
   }
+
+  // Widget _buildInfoItem({required IconData icon, required String text}) {
+  //   return Column(
+  //     children: [
+  //       Icon(icon, color: Colors.orange.shade400, size: 20),
+  //       const SizedBox(height: 4),
+  //       Text(
+  //         text,
+  //         style: TextStyle(
+  //           fontSize: 10,
+  //           color: Colors.grey.shade400,
+  //         ),
+  //         textAlign: TextAlign.center,
+  //       ),
+  //     ],
+  //   );
+  // }
 }

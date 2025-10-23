@@ -308,15 +308,15 @@ class _EasyModeState extends State<EasyMode> {
     return Column(
       children: [
         //unlock all levels for debugging
-        ElevatedButton(
-          onPressed: () {
-            setState(() {
-              _unlockedLevelsCount = _levels.length;
-              _saveUnlockedLevels();
-            });
-          },
-          child: const Text('Unlock All Levels'),
-        ),
+        // ElevatedButton(
+        //   onPressed: () {
+        //     setState(() {
+        //       _unlockedLevelsCount = _levels.length;
+        //       _saveUnlockedLevels();
+        //     });
+        //   },
+        //   child: const Text('Unlock All Levels'),
+        // ),
 
         Expanded(
           child: GridView.builder(
