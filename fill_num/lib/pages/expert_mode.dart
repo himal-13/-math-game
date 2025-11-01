@@ -230,12 +230,7 @@ class _ExtremeGridState extends State<ExtremeGrid> {
           case 'nextPrime':
             _currentValue = _nextPrime(_currentValue);
             break;
-          case 'prevPrime':
-            _currentValue = _previousPrime(_currentValue);
-            break;
-          case 'isPrime':
-            _currentValue = _isPrime(_currentValue) ? Fraction(1, 1) : Fraction(0, 1);
-            break;
+
           case 'φ': // Euler's totient
             _currentValue = _eulerTotient(_currentValue);
             break;
@@ -310,12 +305,18 @@ class _ExtremeGridState extends State<ExtremeGrid> {
         _usedTileIndices.add(index);
         _checkGameState();
       } catch (e) {
-        _triggerGameOverDueToIrrational('Invalid operation: ${e.toString()}');
+        // Check if it's a fraction error vs other math errors
+        final errorMessage = e.toString();
+        if (errorMessage.contains('fraction') || errorMessage.contains('only defined for integers')) {
+          _triggerGameOverDueToIrrational('Math Error: $errorMessage');
+        } else {
+          _triggerGameOverDueToIrrational('Invalid operation: $errorMessage');
+        }
       }
     });
   }
 
-  // All the mathematical function implementations remain the same...
+  // Mathematical function implementations with fraction error handling
   Fraction _power(Fraction base, Fraction exponent) {
     final baseDouble = base.toDouble();
     final exponentDouble = exponent.toDouble();
@@ -395,14 +396,6 @@ class _ExtremeGridState extends State<ExtremeGrid> {
     return Fraction(n, 1);
   }
 
-  Fraction _previousPrime(Fraction value) {
-    int n = value.toDouble().floor();
-    if (n < 2) return Fraction(2, 1);
-    while (!_isPrime(Fraction(n, 1))) {
-      n--;
-    }
-    return Fraction(n, 1);
-  }
 
   bool _isPrime(Fraction value) {
     final n = value.toDouble().round();
@@ -416,6 +409,11 @@ class _ExtremeGridState extends State<ExtremeGrid> {
   }
 
   Fraction _eulerTotient(Fraction value) {
+    // Check if the value is a fraction (not a whole number)
+    if (value.denominator != 1) {
+      throw Exception('Euler\'s totient φ is only defined for integers. ${value.toString()} is a fraction.');
+    }
+    
     final n = value.toDouble().round();
     if (n < 1) return Fraction(0, 1);
     int result = n;
@@ -433,6 +431,9 @@ class _ExtremeGridState extends State<ExtremeGrid> {
   }
 
   Fraction _sumOfDivisors(Fraction value) {
+    if (value.denominator != 1) {
+      throw Exception('Sum of divisors σ is only defined for integers. ${value.toString()} is a fraction.');
+    }
     final n = value.toDouble().round();
     int sum = 0;
     for (int i = 1; i <= n; i++) {
@@ -442,6 +443,9 @@ class _ExtremeGridState extends State<ExtremeGrid> {
   }
 
   Fraction _tauFunction(Fraction value) {
+    if (value.denominator != 1) {
+      throw Exception('Tau function τ is only defined for integers. ${value.toString()} is a fraction.');
+    }
     final n = value.toDouble().round();
     if (n < 1) return Fraction(0, 1);
     int count = 0;
@@ -452,6 +456,9 @@ class _ExtremeGridState extends State<ExtremeGrid> {
   }
 
   Fraction _mobiusFunction(Fraction value) {
+    if (value.denominator != 1) {
+      throw Exception('Möbius function μ is only defined for integers. ${value.toString()} is a fraction.');
+    }
     final n = value.toDouble().round();
     if (n < 1) return Fraction(0, 1);
     if (n == 1) return Fraction(1, 1);
@@ -471,6 +478,9 @@ class _ExtremeGridState extends State<ExtremeGrid> {
   }
 
   Fraction _sumProperDivisors(Fraction value) {
+    if (value.denominator != 1) {
+      throw Exception('Sum of proper divisors is only defined for integers. ${value.toString()} is a fraction.');
+    }
     final n = value.toDouble().round();
     if (n < 1) return Fraction(0, 1);
     int sum = 0;
@@ -481,6 +491,9 @@ class _ExtremeGridState extends State<ExtremeGrid> {
   }
 
   Fraction _radical(Fraction value) {
+    if (value.denominator != 1) {
+      throw Exception('Radical is only defined for integers. ${value.toString()} is a fraction.');
+    }
     final n = value.toDouble().round();
     if (n < 1) return Fraction(1, 1);
     int product = 1;
@@ -497,6 +510,9 @@ class _ExtremeGridState extends State<ExtremeGrid> {
   }
 
   Fraction _sumDigits(Fraction value) {
+    if (value.denominator != 1) {
+      throw Exception('Sum of digits is only defined for integers. ${value.toString()} is a fraction.');
+    }
     final n = value.toDouble().abs().round();
     int sum = 0;
     String digits = n.toString();
@@ -507,6 +523,9 @@ class _ExtremeGridState extends State<ExtremeGrid> {
   }
 
   Fraction _productDigits(Fraction value) {
+    if (value.denominator != 1) {
+      throw Exception('Product of digits is only defined for integers. ${value.toString()} is a fraction.');
+    }
     final n = value.toDouble().abs().round();
     int product = 1;
     String digits = n.toString();
@@ -517,12 +536,18 @@ class _ExtremeGridState extends State<ExtremeGrid> {
   }
 
   Fraction _reverseDigits(Fraction value) {
+    if (value.denominator != 1) {
+      throw Exception('Digit reversal is only defined for integers. ${value.toString()} is a fraction.');
+    }
     final n = value.toDouble().abs().round();
     String reversed = n.toString().split('').reversed.join();
     return Fraction(int.parse(reversed), 1);
   }
 
   Fraction _digitalRoot(Fraction value) {
+    if (value.denominator != 1) {
+      throw Exception('Digital root is only defined for integers. ${value.toString()} is a fraction.');
+    }
     final n = value.toDouble().abs().round();
     int result = n;
     while (result >= 10) {
@@ -537,6 +562,9 @@ class _ExtremeGridState extends State<ExtremeGrid> {
   }
 
   Fraction _countDigits(Fraction value) {
+    if (value.denominator != 1) {
+      throw Exception('Digit count is only defined for integers. ${value.toString()} is a fraction.');
+    }
     final n = value.toDouble().abs().round();
     return Fraction(n.toString().length, 1);
   }

@@ -60,10 +60,6 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 20),
             _buildSettingOption(icon: Icons.volume_up, title: 'Sound Effects'),
             _buildSettingOption(
-              icon: Icons.music_note,
-              title: 'Background Music',
-            ),
-            _buildSettingOption(
               icon: Icons.vibration,
               title: 'Haptic Feedback',
             ),
@@ -150,118 +146,101 @@ class _HomePageState extends State<HomePage> {
 
               const SizedBox(height: 20),
 
-              // Main Content - Compact Grid
+              // Main Content
               Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // App Title
-                    Text(
-                      'Math Puzzle',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.orange.shade400,
-                        letterSpacing: 1.2,
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      // App Title
+                      Text(
+                        'Math OP Puzzle',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange.shade400,
+                          letterSpacing: 1.2,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Choose your challenge',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade400,
+                      const SizedBox(height: 8),
+                      Text(
+                        'Choose your challenge',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade400,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 30),
+                      const SizedBox(height: 30),
 
-                    // Compact Mode Grid - 2x2 layout
-                    Expanded(
-                      child: GridView.count(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        childAspectRatio: 0.9,
+                      // Section: Basic Operations
+                      _buildSectionHeader('Basic Operations'),
+                      const SizedBox(height: 16),
+                      
+                      // Basic Operations Grid
+                      _buildVerticalModeGrid(
                         children: [
-                          _buildCompactModeCard(
+                          _buildModeCard(
                             title: 'Easy',
-                            subtitle: 'Basic Operations\n(+, -, ×, ÷)',
+                            subtitle: 'Basic Operations (+, -, ×, ÷)',
                             color: Colors.green.shade400,
                             icon: Icons.play_arrow,
                             onTap: _navigateToEasyMode,
                           ),
-                          _buildCompactModeCard(
+                          _buildModeCard(
                             title: 'Medium',
-                            subtitle: 'Complex Equations\n& Patterns',
+                            subtitle: 'Complex Equations & Patterns',
                             color: Colors.blue.shade400,
                             icon: Icons.gamepad,
                             onTap: _navigateToMediumMode,
                           ),
-                          _buildCompactModeCard(
+                          _buildModeCard(
                             title: 'Hard',
-                            subtitle: 'Advanced Math\n%, √, ²',
+                            subtitle: 'Advanced Math %, √, ²',
                             color: Colors.orange.shade400,
                             icon: Icons.psychology,
                             onTap: _navigateToHardMode,
                           ),
-                          _buildCompactModeCard(
-                            title: 'Expert',
-                            subtitle: 'More Advanced\n%, !, ∑',
-                            color: Colors.purple.shade300,
-                            icon: Icons.whatshot,
+                        ],
+                      ),
+
+                      const SizedBox(height: 30),
+
+                      // Section: Advanced Operations
+                      _buildSectionHeader('Advanced Operations'),
+                      const SizedBox(height: 16),
+                      
+                      // Advanced Operations Grid
+                      _buildVerticalModeGrid(
+                        children: [
+                          _buildModeCard(
+                            title: 'Expert Equations',
+                            subtitle: 'Complex Equations & Functions',
+                            color: Colors.purple.shade400,
+                            icon: Icons.functions,
+                            onTap: _navigateToMediumMode,
+                          ),
+                          _buildModeCard(
+                            title: 'Calculus',
+                            subtitle: 'Expert Level Calculus & Logic',
+                            color: Colors.red.shade400,
+                            icon: Icons.calculate,
+                            onTap: _navigateToHardMode,
+                          ),
+                          _buildModeCard(
+                            title: 'Fractions',
+                            subtitle: 'Fraction Operations & Algebra',
+                            color: Colors.teal.shade400,
+                            icon: Icons.percent,
                             onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => ExtremeGrid()),
-                              );
+                              // Navigate to Fraction mode
                             },
-                            isExpert: true,
                           ),
                         ],
                       ),
-                    ),
 
-                    // Bottom Section with Additional Info
-                    // Container(
-                    //   margin: const EdgeInsets.only(top: 20, bottom: 10),
-                    //   padding: const EdgeInsets.all(16),
-                    //   decoration: BoxDecoration(
-                    //     color: Colors.grey.shade900.withOpacity(0.3),
-                    //     borderRadius: BorderRadius.circular(16),
-                    //   ),
-                    //   child: Column(
-                    //     children: [
-                    //       Row(
-                    //         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    //         children: [
-                    //           _buildInfoItem(
-                    //             icon: Icons.grid_view,
-                    //             text: '4 Grid Sizes',
-                    //           ),
-                    //           _buildInfoItem(
-                    //             icon: Icons.psychology,
-                    //             text: 'Progressive Difficulty',
-                    //           ),
-                    //           _buildInfoItem(
-                    //             icon: Icons.timer,
-                    //             text: 'Time Challenges',
-                    //           ),
-                    //         ],
-                    //       ),
-                    //       const SizedBox(height: 12),
-                    //       Text(
-                    //         'Complete puzzles to earn hints and unlock achievements!',
-                    //           textAlign: TextAlign.center,
-                    //         style: TextStyle(
-                    //           fontSize: 12,
-                    //           color: Colors.grey.shade500,
-                    //         ),
-                    //       ),
-                    //     ],
-                    //   ),
-                    // ),
-                  ],
+                    
+                   
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -271,13 +250,48 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildCompactModeCard({
+  Widget _buildSectionHeader(String title) {
+    return Row(
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey.shade300,
+          ),
+        ),
+        const Spacer(),
+        Icon(
+          Icons.arrow_forward_ios,
+          color: Colors.grey.shade500,
+          size: 14,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVerticalModeGrid({required List<Widget> children}) {
+    return Column(
+      children: children
+          .asMap()
+          .entries
+          .map((entry) => Padding(
+                padding: EdgeInsets.only(
+                  bottom: entry.key == children.length - 1 ? 0 : 12,
+                ),
+                child: entry.value,
+              ))
+          .toList(),
+    );
+  }
+
+  Widget _buildModeCard({
     required String title,
     required String subtitle,
     required Color color,
     required IconData icon,
     required VoidCallback onTap,
-    bool isExpert = false,
   }) {
     return Card(
       elevation: 4,
@@ -299,8 +313,7 @@ class _HomePageState extends State<HomePage> {
           ),
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: Row(
               children: [
                 // Icon with background
                 Container(
@@ -313,61 +326,43 @@ class _HomePageState extends State<HomePage> {
                   ),
                   child: Icon(icon, color: color, size: 24),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(width: 16),
                 
-                // Title
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: color,
+                // Text content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: color,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    if (isExpert) ...[
-                      const SizedBox(width: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade400,
-                          borderRadius: BorderRadius.circular(6),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade400,
+                          height: 1.3,
                         ),
-                        child: Text(
-                          'PRO',
-                          style: TextStyle(
-                            fontSize: 8,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
-                  ],
-                ),
-                const SizedBox(height: 1),
-                
-                // Subtitle
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade400,
                   ),
-                  textAlign: TextAlign.center,
                 ),
                 
-                // Difficulty indicator
-                const SizedBox(height: 8),
-                Container(
-                  height: 3,
-                  width: 30,
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+                // Arrow indicator
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: Colors.grey.shade600,
+                  size: 16,
                 ),
               ],
             ),
@@ -377,20 +372,5 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Widget _buildInfoItem({required IconData icon, required String text}) {
-  //   return Column(
-  //     children: [
-  //       Icon(icon, color: Colors.orange.shade400, size: 20),
-  //       const SizedBox(height: 4),
-  //       Text(
-  //         text,
-  //         style: TextStyle(
-  //           fontSize: 10,
-  //           color: Colors.grey.shade400,
-  //         ),
-  //         textAlign: TextAlign.center,
-  //       ),
-  //     ],
-  //   );
-  // }
+  
 }

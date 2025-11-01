@@ -445,6 +445,17 @@ class _HardModeState extends State<HardMode> {
             ),
           ),
         ),
+
+        //unlock all levels for debugging
+        // ElevatedButton( 
+        //   onPressed: () {
+        //     setState(() {
+        //       _unlockedLevelsCount = _levels.length;
+        //       _saveProgress();
+        //     });
+        //   },
+        //   child: const Text('Unlock All Levels'),
+        // ),
         Expanded(
           child: GridView.builder(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
